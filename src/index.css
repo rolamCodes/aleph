@@ -1,0 +1,34 @@
+@import "@xyflow/react/dist/style.css";
+
+html,
+body,
+#root {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  font-family: system-ui, sans-serif;
+}
+
+.canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.add-node {
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background: #fff;
+  color: #101828;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 12px;
+}
+
+.add-node:hover {
+  background: #f9fafb;
+}
