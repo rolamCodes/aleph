@@ -59,7 +59,7 @@ function ElementRow({
   );
 
   return (
-    <div className="element-row">
+    <div className="element-row" data-reticle>
       <span className="element-label">{element.label}</span>
       {element.interactive ? (
         <Handle
@@ -88,7 +88,10 @@ export default function ContextNode({ id, data }: NodeProps<ContextNodeType>) {
   const sections = toSections(data.items);
 
   return (
-    <div className={`context-node context-node--${data.kind}`}>
+    <div
+      className={`context-node context-node--${data.kind}`}
+      data-reticle
+    >
       <header className="context-header">
         <Handle
           type="target"
@@ -115,6 +118,7 @@ export default function ContextNode({ id, data }: NodeProps<ContextNodeType>) {
                   ? "component-group"
                   : "component-group component-group--untitled"
               }
+              data-reticle
             >
               {section.name ? (
                 <div className="component-name">{section.name}</div>

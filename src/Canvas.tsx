@@ -11,6 +11,7 @@ import {
 import ContextNode from "./ContextNode";
 import type { EdgeTypes } from "@xyflow/react";
 import InteractionEdge from "./InteractionEdge";
+import Reticle from "./Reticle";
 import type {
   ContextNode as ContextNodeType,
   InteractionEdge as InteractionEdgeType,
@@ -224,6 +225,7 @@ export default function Canvas() {
       >
         <Background color="#303435" gap={20} size={2} />
       </ReactFlow>
+      <Reticle />
     </div>
   );
 }
