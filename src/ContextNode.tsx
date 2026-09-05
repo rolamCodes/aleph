@@ -44,7 +44,20 @@ function toSections(items: ContextItem[]): Section[] {
   return sections;
 }
 
-function ElementRow({ element }: { element: UIElement }) {
+function ElementRow({
+  element,
+  nodeId,
+}: {
+  element: UIElement;
+  nodeId: string;
+}) {
+  const isConnected = useStore((state) =>
+    state.edges.some(
+      (edge) =>
+        edge.source === nodeId && edge.sourceHandle === `exit:${element.id}`,
+    ),
+  );
+
   return (
     <div className="element-row">
       <span className="element-label">{element.label}</span>
@@ -53,6 +66,11 @@ function ElementRow({ element }: { element: UIElement }) {
           type="source"
           position={Position.Right}
           id={`exit:${element.id}`}
+          className={
+            isConnected
+              ? "element-exit element-exit--connected"
+              : "element-exit"
+          }
         />
       ) : (
         <span className="row-port" aria-hidden="true" />
@@ -102,7 +120,11 @@ export default function ContextNode({ id, data }: NodeProps<ContextNodeType>) {
                 <div className="component-name">{section.name}</div>
               ) : null}
               {section.elements.map((element) => (
-                <ElementRow key={element.id} element={element} />
+                <ElementRow
+                  key={element.id}
+                  element={element}
+                  nodeId={id}
+                />
               ))}
             </section>
           ))}

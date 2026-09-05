@@ -9,11 +9,20 @@ import {
   type NodeTypes,
 } from "@xyflow/react";
 import ContextNode from "./ContextNode";
-import type { ContextNode as ContextNodeType, InteractionEdge } from "./types";
+import type { EdgeTypes } from "@xyflow/react";
+import InteractionEdge from "./InteractionEdge";
+import type {
+  ContextNode as ContextNodeType,
+  InteractionEdge as InteractionEdgeType,
+} from "./types";
 
 const nodeTypes = {
   context: ContextNode,
 } satisfies NodeTypes;
+
+const edgeTypes = {
+  interaction: InteractionEdge,
+} satisfies EdgeTypes;
 
 const initialNodes: ContextNodeType[] = [
   {
@@ -131,13 +140,13 @@ const initialNodes: ContextNodeType[] = [
 ];
 
 const defaultEdgeOptions = {
-  type: "smoothstep",
+  type: "interaction",
 } as const;
 
-const initialEdges: InteractionEdge[] = [
+const initialEdges: InteractionEdgeType[] = [
   {
     id: "home-cta-sign-in",
-    type: "smoothstep",
+    type: "interaction",
     source: "home",
     sourceHandle: "exit:home-cta",
     target: "sign-in",
@@ -147,7 +156,7 @@ const initialEdges: InteractionEdge[] = [
   },
   {
     id: "sign-in-submit-dashboard",
-    type: "smoothstep",
+    type: "interaction",
     source: "sign-in",
     sourceHandle: "exit:sign-in-submit",
     target: "dashboard",
@@ -157,7 +166,7 @@ const initialEdges: InteractionEdge[] = [
   },
   {
     id: "home-settings-sheet",
-    type: "smoothstep",
+    type: "interaction",
     source: "home",
     sourceHandle: "exit:home-settings",
     target: "settings",
@@ -168,7 +177,7 @@ const initialEdges: InteractionEdge[] = [
 ];
 
 function isValidInteraction(
-  connection: Connection | InteractionEdge,
+  connection: Connection | InteractionEdgeType,
 ): boolean {
   const sourceHandle = connection.sourceHandle ?? "";
   const targetHandle = connection.targetHandle ?? "";
@@ -189,7 +198,7 @@ export default function Canvas() {
         addEdge(
           {
             ...connection,
-            type: "smoothstep",
+            type: "interaction",
             label: "click",
             data: { interaction: "click" },
           },
@@ -210,6 +219,7 @@ export default function Canvas() {
         onConnect={onConnect}
         isValidConnection={isValidInteraction}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
       >
         <Background color="#303435" gap={20} size={2} />
