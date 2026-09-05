@@ -26,6 +26,18 @@ body {
   --xy-connectionline-stroke: #f2f2f2;
 }
 
+.react-flow__edges {
+  z-index: 4;
+}
+
+.react-flow__edgelabel-renderer {
+  z-index: 5;
+}
+
+.react-flow__nodes {
+  z-index: 3;
+}
+
 .react-flow__node,
 .react-flow__node-context,
 .react-flow__node.selected,
@@ -48,7 +60,7 @@ body {
 }
 
 .react-flow__edge-textbg {
-  fill: transparent;
+  fill: #000000;
 }
 
 .react-flow__handle {

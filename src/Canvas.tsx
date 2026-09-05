@@ -130,9 +130,14 @@ const initialNodes: ContextNodeType[] = [
   },
 ];
 
+const defaultEdgeOptions = {
+  type: "smoothstep",
+} as const;
+
 const initialEdges: InteractionEdge[] = [
   {
     id: "home-cta-sign-in",
+    type: "smoothstep",
     source: "home",
     sourceHandle: "exit:home-cta",
     target: "sign-in",
@@ -142,6 +147,7 @@ const initialEdges: InteractionEdge[] = [
   },
   {
     id: "sign-in-submit-dashboard",
+    type: "smoothstep",
     source: "sign-in",
     sourceHandle: "exit:sign-in-submit",
     target: "dashboard",
@@ -151,6 +157,7 @@ const initialEdges: InteractionEdge[] = [
   },
   {
     id: "home-settings-sheet",
+    type: "smoothstep",
     source: "home",
     sourceHandle: "exit:home-settings",
     target: "settings",
@@ -182,6 +189,7 @@ export default function Canvas() {
         addEdge(
           {
             ...connection,
+            type: "smoothstep",
             label: "click",
             data: { interaction: "click" },
           },
@@ -202,6 +210,7 @@ export default function Canvas() {
         onConnect={onConnect}
         isValidConnection={isValidInteraction}
         nodeTypes={nodeTypes}
+        defaultEdgeOptions={defaultEdgeOptions}
       >
         <Background color="#303435" gap={20} size={2} />
       </ReactFlow>
