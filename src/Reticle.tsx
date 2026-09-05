@@ -103,13 +103,6 @@ export default function Reticle() {
 
       node.style.opacity = "1";
 
-      const attached = attachedRef.current;
-      if (attached && stillAttached(attached, x, y)) {
-        applySnap(boxFromElement(attached));
-        return;
-      }
-
-      attachedRef.current = null;
       const hit = pickHit(x, y);
       if (hit) {
         attachedRef.current = hit;
@@ -117,6 +110,13 @@ export default function Reticle() {
         return;
       }
 
+      const attached = attachedRef.current;
+      if (attached && stillAttached(attached, x, y)) {
+        applySnap(boxFromElement(attached));
+        return;
+      }
+
+      attachedRef.current = null;
       applyIdle(x, y);
     };
 
