@@ -9,7 +9,7 @@ body,
 }
 
 body {
-  background: #000000;
+  background: #020303;
   color: #ffffff;
   font-family: system-ui, sans-serif;
 }
@@ -20,7 +20,7 @@ body {
 }
 
 .react-flow {
-  --xy-background-color: #000000;
+  --xy-background-color: #020303;
   --xy-edge-stroke: #f2f2f2;
   --xy-edge-stroke-selected: #ffffff;
   --xy-connectionline-stroke: #f2f2f2;
@@ -52,11 +52,11 @@ body {
 }
 
 .react-flow__handle {
-  background: #222222;
-  border: 2px solid #050505;
+  background: #242424;
+  border: 0;
   box-sizing: border-box;
-  height: 34px;
-  width: 34px;
+  height: 36px;
+  width: 36px;
 }
 
 .react-flow__handle::after,
@@ -73,15 +73,15 @@ body {
 }
 
 .row-port {
-  background: #222222;
-  border: 2px solid #050505;
+  background: #242424;
+  border: 0;
   border-radius: 50%;
   box-sizing: border-box;
   flex-shrink: 0;
-  height: 34px;
+  height: 36px;
   margin-left: auto;
   position: relative;
-  width: 34px;
+  width: 36px;
 }
 
 .element-row .react-flow__handle-right {
@@ -94,12 +94,12 @@ body {
 .context-header .react-flow__handle-left {
   background: #ffffff;
   border: none;
-  height: 8px;
+  height: 11px;
   left: 0;
   position: relative;
   top: auto;
   transform: none;
-  width: 8px;
+  width: 11px;
 }
 
 .context-header .react-flow__handle-left::after {
@@ -108,7 +108,7 @@ body {
 
 .context-node {
   color: #ffffff;
-  font-size: 18px;
+  font-size: 20px;
   line-height: 1.25;
   width: 288px;
 }
@@ -123,21 +123,28 @@ body {
 .context-header {
   align-items: center;
   display: flex;
-  gap: 6px;
-  padding: 0 0 10px;
+  gap: 8px;
+  padding: 0 0 11px;
 }
 
 .context-name {
-  font-size: 18px;
+  font-size: 20px;
+  line-height: 24px;
   font-weight: 700;
 }
 
 .context-kind {
+  align-items: center;
   border-radius: 999px;
+  box-sizing: border-box;
+  display: flex;
   font-size: 18px;
   font-weight: 400;
-  line-height: 1;
+  height: 27px;
+  justify-content: center;
+  line-height: 27px;
   margin-left: auto;
+  min-width: 80px;
   padding: 4px 14px;
   text-transform: lowercase;
 }
@@ -148,8 +155,8 @@ body {
 }
 
 .context-kind--modal {
-  background: #340044;
-  color: #bd20ed;
+  background: #3b0044;
+  color: #d000ff;
 }
 
 .context-kind--sheet {
@@ -174,20 +181,26 @@ body {
 }
 
 .component-group {
-  background: #1a1a1a;
-  border: 1px solid #252525;
-  border-radius: 20px;
+  background: #1b1b1b;
+  border: 1px solid #292929;
+  border-radius: 21px;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 8px;
+  gap: 2px;
+  padding: 14px 7px 7px;
+}
+
+.component-group--untitled {
+  padding-top: 7px;
 }
 
 .component-name {
-  color: #777777;
-  font-size: 18px;
-  font-weight: 700;
-  padding: 5px 17px 4px;
+  color: #747474;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 24px;
+  margin: 0 18px 9px;
 }
 
 .element-row {
@@ -198,12 +211,13 @@ body {
   box-sizing: border-box;
   display: flex;
   gap: 8px;
-  min-height: 38px;
+  height: 39px;
   padding: 1px 1px 1px 20px;
 }
 
 .element-label {
   color: #ffffff;
   flex: 1;
-  font-size: 18px;
+  font-size: 20px;
+  line-height: 24px;
 }

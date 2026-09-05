@@ -63,7 +63,7 @@ const initialNodes: ContextNodeType[] = [
   {
     id: "sign-in",
     type: "context",
-    position: { x: 420, y: 40 },
+    position: { x: 470, y: 238 },
     data: {
       kind: "modal",
       name: "Sign in",
@@ -95,7 +95,7 @@ const initialNodes: ContextNodeType[] = [
   {
     id: "dashboard",
     type: "context",
-    position: { x: 800, y: 40 },
+    position: { x: 850, y: 238 },
     data: {
       kind: "screen",
       name: "Dashboard",
@@ -113,7 +113,7 @@ const initialNodes: ContextNodeType[] = [
   {
     id: "settings",
     type: "context",
-    position: { x: 420, y: 320 },
+    position: { x: 470, y: 520 },
     data: {
       kind: "sheet",
       name: "Settings",
@@ -204,7 +204,7 @@ export default function Canvas() {
         nodeTypes={nodeTypes}
         fitView
       >
-        <Background color="#353535" gap={20} size={1.2} />
+        <Background color="#303435" gap={20} size={2} />
       </ReactFlow>
     </div>
   );

@@ -76,7 +76,14 @@ export default function ContextNode({ data }: NodeProps<ContextNodeType>) {
       {sections.length > 0 ? (
         <div className="context-sections">
           {sections.map((section) => (
-            <section key={section.id} className="component-group">
+            <section
+              key={section.id}
+              className={
+                section.name
+                  ? "component-group"
+                  : "component-group component-group--untitled"
+              }
+            >
               {section.name ? (
                 <div className="component-name">{section.name}</div>
               ) : null}
