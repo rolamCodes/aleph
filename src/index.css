@@ -9,6 +9,8 @@ body,
 }
 
 body {
+  background: #020303;
+  color: #ffffff;
   font-family: system-ui, sans-serif;
 }
 
@@ -17,88 +19,238 @@ body {
   height: 100%;
 }
 
-.add-node {
-  border: 1px solid #d0d5dd;
-  border-radius: 8px;
-  background: #fff;
-  color: #101828;
-  cursor: pointer;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 500;
-  padding: 8px 12px;
+.react-flow {
+  --xy-background-color: #020303;
+  --xy-edge-stroke: #f2f2f2;
+  --xy-edge-stroke-selected: #ffffff;
+  --xy-connectionline-stroke: #f2f2f2;
 }
 
-.add-node:hover {
-  background: #f9fafb;
+.react-flow__edges {
+  z-index: 4;
 }
 
-.context-node {
-  min-width: 200px;
-  background: #fff;
-  border: 1px solid #d0d5dd;
-  border-radius: 8px;
-  color: #101828;
-  font-size: 13px;
-  line-height: 1.4;
-  padding: 10px 12px 8px;
+.react-flow__edgelabel-renderer {
+  z-index: 5;
 }
 
-.context-header {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding-bottom: 6px;
+.react-flow__nodes {
+  z-index: 3;
 }
 
-.context-kind {
-  color: #667085;
-  font-size: 11px;
-  letter-spacing: 0.02em;
-  text-transform: lowercase;
+.react-flow__node,
+.react-flow__node-context,
+.react-flow__node.selected,
+.react-flow__node-context.selected {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
 }
 
-.context-name {
-  font-weight: 600;
-}
-
-.context-items {
-  list-style: none;
-  margin: 0;
-  padding: 4px 0 0;
-  border-top: 1px solid #eaecf0;
-}
-
-.component-group {
-  margin: 6px 0;
-}
-
-.component-name {
-  color: #667085;
-  font-size: 11px;
-  font-weight: 600;
-  margin-bottom: 2px;
-}
-
-.element-row {
-  position: relative;
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 3px 10px 3px 0;
-}
-
-.element-kind {
-  color: #98a2b3;
-  font-size: 11px;
-  min-width: 44px;
-}
-
-.element-label {
-  color: #101828;
+.react-flow__edge-path,
+.react-flow__connection-path {
+  stroke-width: 2;
 }
 
 .react-flow__edge-text {
-  font-size: 11px;
-  fill: #344054;
+  font-size: 18px;
+  fill: #ffffff;
+}
+
+.react-flow__edge-textbg {
+  fill: #000000;
+}
+
+.edge-terminal {
+  fill: #ffffff;
+}
+
+.edge-label {
+  background: #000000;
+  color: #ffffff;
+  font-size: 18px;
+  line-height: 1;
+  padding: 2px 6px;
+  pointer-events: none;
+  position: absolute;
+}
+
+.react-flow__handle {
+  background: #242424;
+  border: 0;
+  box-sizing: border-box;
+  height: 36px;
+  width: 36px;
+}
+
+.react-flow__handle::after,
+.row-port::after {
+  background: #050505;
+  border-radius: 50%;
+  content: "";
+  height: 8px;
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+}
+
+.row-port {
+  background: #242424;
+  border: 0;
+  border-radius: 50%;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  height: 36px;
+  margin-left: auto;
+  position: relative;
+  width: 36px;
+}
+
+.element-row .react-flow__handle-right {
+  position: relative;
+  right: auto;
+  top: auto;
+  transform: none;
+}
+
+.element-exit--connected::after {
+  display: none;
+}
+
+.context-header .context-entry {
+  background: transparent;
+  border: 2px solid #ffffff;
+  box-sizing: border-box;
+  height: 11px;
+  left: 0;
+  position: relative;
+  top: auto;
+  transform: none;
+  width: 11px;
+}
+
+.context-header .context-entry--connected {
+  background: #ffffff;
+}
+
+.context-header .context-entry::after {
+  display: none;
+}
+
+.context-node {
+  color: #ffffff;
+  font-size: 20px;
+  line-height: 1.25;
+  width: 288px;
+}
+
+.context-node--modal,
+.context-node--sheet,
+.context-node--drawer,
+.context-node--popover {
+  width: 246px;
+}
+
+.context-header {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  padding: 0 0 11px;
+}
+
+.context-name {
+  font-size: 20px;
+  line-height: 24px;
+  font-weight: 700;
+}
+
+.context-kind {
+  align-items: center;
+  border-radius: 999px;
+  box-sizing: border-box;
+  display: flex;
+  font-size: 18px;
+  font-weight: 400;
+  justify-content: center;
+  line-height: 1;
+  margin-left: auto;
+  min-width: 80px;
+  padding: 4px 14px 7px;
+  text-transform: lowercase;
+}
+
+.context-kind--screen {
+  background: #1b2e2e;
+  color: #4ade80;
+}
+
+.context-kind--modal {
+  background: #3b0044;
+  color: #d000ff;
+}
+
+.context-kind--sheet {
+  background: #46320d;
+  color: #f3bd42;
+}
+
+.context-kind--drawer {
+  background: #102c47;
+  color: #69b3ff;
+}
+
+.context-kind--popover {
+  background: #0e3b34;
+  color: #4be4cb;
+}
+
+.context-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.component-group {
+  background: #1b1b1b;
+  border: 2px solid #292929;
+  border-radius: 25px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 4px 4px;
+}
+
+.component-group--untitled {
+  padding-top: 12px;
+}
+
+.component-name {
+  color: #747474;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 24px;
+  margin: 0 18px 9px;
+}
+
+.element-row {
+  align-items: center;
+  background: #000000;
+  border: none;
+  border-radius: 20px;
+  box-sizing: border-box;
+  display: flex;
+  gap: 8px;
+  padding: 2px 2px 2px 20px;
+}
+
+.element-label {
+  color: #ffffff;
+  flex: 1;
+  font-size: 20px;
+  line-height: 24px;
 }
