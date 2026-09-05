@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 
-const IDLE_SIZE = 16;
+const IDLE_SIZE = 8;
+const CURSOR_OFFSET = 12;
 const ATTACHMENT_RADIUS = 40;
 const PADDING = 2;
 const EDGE_SNAP_DISTANCE = 12;
@@ -12,7 +13,6 @@ type Box = {
   top: number;
   width: number;
   height: number;
-  radius: string;
 };
 
 type Target =
@@ -31,13 +31,11 @@ function containsPoint(x: number, y: number, r: DOMRect): boolean {
 
 function boxFromElement(el: Element): Box {
   const r = el.getBoundingClientRect();
-  const radius = getComputedStyle(el).borderRadius || "8px";
   return {
     left: r.left - PADDING,
     top: r.top - PADDING,
     width: r.width + PADDING * 2,
     height: r.height + PADDING * 2,
-    radius,
   };
 }
 
@@ -77,7 +75,6 @@ function boxFromPathPoint(x: number, y: number): Box {
     top: y - size / 2,
     width: size,
     height: size,
-    radius: "50%",
   };
 }
 
@@ -156,24 +153,21 @@ export default function Reticle() {
 
     const applyIdle = (x: number, y: number) => {
       node.classList.remove("reticle--snapped");
-      node.style.transition =
-        "width 150ms ease, height 150ms ease, border-radius 150ms ease";
+      node.style.transition = "width 150ms ease, height 150ms ease";
       node.style.width = `${IDLE_SIZE}px`;
       node.style.height = `${IDLE_SIZE}px`;
-      node.style.left = `${x - IDLE_SIZE / 2}px`;
-      node.style.top = `${y - IDLE_SIZE / 2}px`;
-      node.style.borderRadius = "50%";
+      node.style.left = `${x + CURSOR_OFFSET}px`;
+      node.style.top = `${y + CURSOR_OFFSET}px`;
     };
 
     const applySnap = (box: Box) => {
       node.classList.add("reticle--snapped");
       node.style.transition =
-        "left 150ms ease, top 150ms ease, width 150ms ease, height 150ms ease, border-radius 150ms ease";
+        "left 150ms ease, top 150ms ease, width 150ms ease, height 150ms ease";
       node.style.width = `${box.width}px`;
       node.style.height = `${box.height}px`;
       node.style.left = `${box.left}px`;
       node.style.top = `${box.top}px`;
-      node.style.borderRadius = box.radius;
     };
 
     const update = () => {

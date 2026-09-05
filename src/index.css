@@ -23,14 +23,15 @@ body {
 .reticle {
   background: transparent;
   border: 1.5px solid #3b9eff;
+  border-radius: 4px;
   box-sizing: border-box;
-  height: 16px;
+  height: 8px;
   left: 0;
   opacity: 0;
   pointer-events: none;
   position: fixed;
   top: 0;
-  width: 16px;
+  width: 8px;
   z-index: 10000;
 }
 
