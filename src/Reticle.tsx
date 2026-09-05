@@ -77,7 +77,6 @@ export default function Reticle() {
 
     const applyIdle = (x: number, y: number) => {
       node.classList.remove("reticle--snapped");
-      node.style.transition = "width 150ms ease, height 150ms ease";
       node.style.width = `${IDLE_SIZE}px`;
       node.style.height = `${IDLE_SIZE}px`;
       node.style.left = `${x - CURSOR_OFFSET - IDLE_SIZE}px`;
@@ -86,8 +85,6 @@ export default function Reticle() {
 
     const applySnap = (box: Box) => {
       node.classList.add("reticle--snapped");
-      node.style.transition =
-        "left 150ms ease, top 150ms ease, width 150ms ease, height 150ms ease";
       node.style.width = `${box.width}px`;
       node.style.height = `${box.height}px`;
       node.style.left = `${box.left}px`;
