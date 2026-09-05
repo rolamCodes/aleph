@@ -91,9 +91,10 @@ body {
   transform: none;
 }
 
-.context-header .react-flow__handle-left {
-  background: #ffffff;
-  border: none;
+.context-header .context-entry {
+  background: transparent;
+  border: 2px solid #ffffff;
+  box-sizing: border-box;
   height: 11px;
   left: 0;
   position: relative;
@@ -102,7 +103,11 @@ body {
   width: 11px;
 }
 
-.context-header .react-flow__handle-left::after {
+.context-header .context-entry--connected {
+  background: #ffffff;
+}
+
+.context-header .context-entry::after {
   display: none;
 }
 
@@ -145,13 +150,13 @@ body {
   line-height: 27px;
   margin-left: auto;
   min-width: 80px;
-  padding: 4px 14px;
+  padding: 3px 14px 6px;
   text-transform: lowercase;
 }
 
 .context-kind--screen {
-  background: #003d2b;
-  color: #00ed83;
+  background: #1b2e2e;
+  color: #4ade80;
 }
 
 .context-kind--modal {

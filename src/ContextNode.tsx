@@ -1,4 +1,4 @@
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, Position, useStore, type NodeProps } from "@xyflow/react";
 import type {
   ContextItem,
   ContextNode as ContextNodeType,
@@ -61,13 +61,27 @@ function ElementRow({ element }: { element: UIElement }) {
   );
 }
 
-export default function ContextNode({ data }: NodeProps<ContextNodeType>) {
+export default function ContextNode({ id, data }: NodeProps<ContextNodeType>) {
+  const isConnected = useStore((state) =>
+    state.edges.some(
+      (edge) => edge.target === id && (edge.targetHandle ?? "entry") === "entry",
+    ),
+  );
   const sections = toSections(data.items);
 
   return (
     <div className={`context-node context-node--${data.kind}`}>
       <header className="context-header">
-        <Handle type="target" position={Position.Left} id="entry" />
+        <Handle
+          type="target"
+          position={Position.Left}
+          id="entry"
+          className={
+            isConnected
+              ? "context-entry context-entry--connected"
+              : "context-entry"
+          }
+        />
         <span className="context-name">{data.name}</span>
         <span className={`context-kind context-kind--${data.kind}`}>
           {data.kind}
