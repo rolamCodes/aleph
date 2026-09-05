@@ -1,9 +1,7 @@
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import {
   addEdge,
   Background,
-  Controls,
-  Panel,
   ReactFlow,
   useEdgesState,
   useNodesState,
@@ -173,7 +171,6 @@ function isValidInteraction(
 export default function Canvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-  const nextContextId = useRef(1);
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -195,28 +192,6 @@ export default function Canvas() {
     [setEdges],
   );
 
-  const addContext = useCallback(() => {
-    const n = nextContextId.current;
-    nextContextId.current += 1;
-    const id = `context-${n}`;
-
-    const newNode: ContextNodeType = {
-      id,
-      type: "context",
-      position: {
-        x: 40 + ((n - 1) % 3) * 280,
-        y: 520 + Math.floor((n - 1) / 3) * 140,
-      },
-      data: {
-        kind: "screen",
-        name: `Screen ${n}`,
-        items: [],
-      },
-    };
-
-    setNodes((current) => [...current, newNode]);
-  }, [setNodes]);
-
   return (
     <div className="canvas">
       <ReactFlow
@@ -229,13 +204,7 @@ export default function Canvas() {
         nodeTypes={nodeTypes}
         fitView
       >
-        <Background color="#4a4a4a" gap={20} size={1.15} />
-        <Controls />
-        <Panel position="top-left">
-          <button type="button" className="add-node" onClick={addContext}>
-            Add context
-          </button>
-        </Panel>
+        <Background color="#353535" gap={20} size={1.2} />
       </ReactFlow>
     </div>
   );

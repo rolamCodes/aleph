@@ -21,9 +21,9 @@ body {
 
 .react-flow {
   --xy-background-color: #000000;
-  --xy-edge-stroke: #e8e8e8;
+  --xy-edge-stroke: #f2f2f2;
   --xy-edge-stroke-selected: #ffffff;
-  --xy-connectionline-stroke: #e8e8e8;
+  --xy-connectionline-stroke: #f2f2f2;
 }
 
 .react-flow__node,
@@ -37,66 +37,51 @@ body {
   padding: 0;
 }
 
-.react-flow__controls {
-  background: #1a1a1a;
-  border: 1px solid #2e2e2e;
-  border-radius: 10px;
-  box-shadow: none;
-  overflow: hidden;
-}
-
-.react-flow__controls-button {
-  background: #1a1a1a;
-  border-bottom: 1px solid #2e2e2e;
-  fill: #e5e5e5;
-}
-
-.react-flow__controls-button:hover {
-  background: #242424;
-}
-
-.react-flow__controls-button:last-child {
-  border-bottom: none;
+.react-flow__edge-path,
+.react-flow__connection-path {
+  stroke-width: 2;
 }
 
 .react-flow__edge-text {
-  font-size: 11px;
+  font-size: 18px;
   fill: #ffffff;
 }
 
 .react-flow__edge-textbg {
-  fill: #000000;
+  fill: transparent;
 }
 
 .react-flow__handle {
-  background: #1a1a1a;
-  border: 1.5px solid #c8c8c8;
-  height: 12px;
-  width: 12px;
+  background: #222222;
+  border: 2px solid #050505;
+  box-sizing: border-box;
+  height: 34px;
+  width: 34px;
 }
 
 .react-flow__handle::after,
 .row-port::after {
-  background: #c8c8c8;
+  background: #050505;
   border-radius: 50%;
   content: "";
-  height: 3px;
+  height: 8px;
   left: 50%;
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 3px;
+  width: 8px;
 }
 
 .row-port {
-  background: #1a1a1a;
-  border: 1.5px solid #3d3d3d;
+  background: #222222;
+  border: 2px solid #050505;
   border-radius: 50%;
+  box-sizing: border-box;
   flex-shrink: 0;
-  height: 12px;
+  height: 34px;
   margin-left: auto;
   position: relative;
-  width: 12px;
+  width: 34px;
 }
 
 .element-row .react-flow__handle-right {
@@ -107,87 +92,79 @@ body {
 }
 
 .context-header .react-flow__handle-left {
-  background: #000000;
-  border-color: #ffffff;
+  background: #ffffff;
+  border: none;
+  height: 8px;
   left: 0;
   position: relative;
   top: auto;
   transform: none;
+  width: 8px;
 }
 
 .context-header .react-flow__handle-left::after {
   display: none;
 }
 
-.add-node {
-  background: #1a1a1a;
-  border: 1px solid #2e2e2e;
-  border-radius: 999px;
-  color: #f5f5f5;
-  cursor: pointer;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  padding: 8px 14px;
-}
-
-.add-node:hover {
-  background: #242424;
-}
-
 .context-node {
   color: #ffffff;
-  font-size: 13px;
-  line-height: 1.4;
-  min-width: 280px;
-  width: 280px;
+  font-size: 18px;
+  line-height: 1.25;
+  width: 288px;
+}
+
+.context-node--modal,
+.context-node--sheet,
+.context-node--drawer,
+.context-node--popover {
+  width: 246px;
 }
 
 .context-header {
   align-items: center;
   display: flex;
-  gap: 8px;
+  gap: 6px;
   padding: 0 0 10px;
 }
 
 .context-name {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
 }
 
 .context-kind {
   border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  font-size: 18px;
+  font-weight: 400;
   line-height: 1;
-  padding: 4px 8px;
+  margin-left: auto;
+  padding: 4px 14px;
   text-transform: lowercase;
 }
 
 .context-kind--screen {
-  background: #14351f;
-  color: #5dff9a;
+  background: #003d2b;
+  color: #00ed83;
 }
 
 .context-kind--modal {
-  background: #2a1842;
-  color: #d4a4ff;
+  background: #340044;
+  color: #bd20ed;
 }
 
 .context-kind--sheet {
-  background: #3a2a10;
-  color: #f5c14a;
+  background: #46320d;
+  color: #f3bd42;
 }
 
 .context-kind--drawer {
-  background: #10253a;
-  color: #7eb6ff;
+  background: #102c47;
+  color: #69b3ff;
 }
 
 .context-kind--popover {
-  background: #12352e;
-  color: #5eead4;
+  background: #0e3b34;
+  color: #4be4cb;
 }
 
 .context-sections {
@@ -198,33 +175,35 @@ body {
 
 .component-group {
   background: #1a1a1a;
-  border: 1px solid #2a2a2a;
-  border-radius: 16px;
+  border: 1px solid #252525;
+  border-radius: 20px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 12px;
+  gap: 3px;
+  padding: 8px;
 }
 
 .component-name {
-  color: #888888;
-  font-size: 12px;
-  font-weight: 500;
-  padding: 0 2px 2px;
+  color: #777777;
+  font-size: 18px;
+  font-weight: 700;
+  padding: 5px 17px 4px;
 }
 
 .element-row {
   align-items: center;
   background: #000000;
-  border: 1px solid #2a2a2a;
-  border-radius: 10px;
+  border: 1px solid #222222;
+  border-radius: 20px;
+  box-sizing: border-box;
   display: flex;
-  gap: 10px;
+  gap: 8px;
   min-height: 38px;
-  padding: 8px 12px;
+  padding: 1px 1px 1px 20px;
 }
 
 .element-label {
   color: #ffffff;
   flex: 1;
+  font-size: 18px;
 }
