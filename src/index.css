@@ -145,12 +145,11 @@ body {
   display: flex;
   font-size: 18px;
   font-weight: 400;
-  height: 27px;
   justify-content: center;
-  line-height: 27px;
+  line-height: 1;
   margin-left: auto;
   min-width: 80px;
-  padding: 3px 14px 6px;
+  padding: 4px 14px 7px;
   text-transform: lowercase;
 }
 
