@@ -4,9 +4,7 @@ const IDLE_SIZE = 8;
 const CURSOR_OFFSET = 12;
 const ATTACHMENT_RADIUS = 40;
 const PADDING = 2;
-const EDGE_SNAP_DISTANCE = 12;
-const MARKED_SELECTOR = "[data-reticle]";
-const EDGE_PATH_SELECTOR = ".react-flow__edge-path";
+const TARGET_SELECTOR = "[data-reticle], .react-flow__edge";
 
 type Box = {
   left: number;
@@ -14,10 +12,6 @@ type Box = {
   width: number;
   height: number;
 };
-
-type Target =
-  | { kind: "box"; el: Element }
-  | { kind: "path"; el: SVGPathElement };
 
 function distanceToRect(x: number, y: number, r: DOMRect): number {
   const dx = Math.max(r.left - x, 0, x - r.right);
@@ -39,50 +33,11 @@ function boxFromElement(el: Element): Box {
   };
 }
 
-function closestPointOnPath(
-  x: number,
-  y: number,
-  path: SVGPathElement,
-): { distance: number; x: number; y: number } {
-  const ctm = path.getScreenCTM();
-  if (!ctm) {
-    return { distance: Infinity, x, y };
-  }
-
-  const length = path.getTotalLength();
-  if (length === 0) {
-    return { distance: Infinity, x, y };
-  }
-
-  let best = { distance: Infinity, x, y };
-  const steps = 24;
-  for (let i = 0; i <= steps; i += 1) {
-    const point = path.getPointAtLength((length * i) / steps);
-    const screen = new DOMPoint(point.x, point.y).matrixTransform(ctm);
-    const distance = Math.hypot(screen.x - x, screen.y - y);
-    if (distance < best.distance) {
-      best = { distance, x: screen.x, y: screen.y };
-    }
-  }
-
-  return best;
-}
-
-function boxFromPathPoint(x: number, y: number): Box {
-  const size = IDLE_SIZE + 8;
-  return {
-    left: x - size / 2,
-    top: y - size / 2,
-    width: size,
-    height: size,
-  };
-}
-
-function pickHit(x: number, y: number): Target | null {
+function pickHit(x: number, y: number): Element | null {
   let bestEl: Element | null = null;
   let bestArea = Infinity;
 
-  for (const el of document.querySelectorAll(MARKED_SELECTOR)) {
+  for (const el of document.querySelectorAll(TARGET_SELECTOR)) {
     const rect = el.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) {
       continue;
@@ -96,53 +51,22 @@ function pickHit(x: number, y: number): Target | null {
     }
   }
 
-  if (bestEl) {
-    return { kind: "box", el: bestEl };
-  }
-
-  let bestPath: SVGPathElement | null = null;
-  let bestDistance = EDGE_SNAP_DISTANCE;
-
-  for (const el of document.querySelectorAll<SVGPathElement>(
-    EDGE_PATH_SELECTOR,
-  )) {
-    const { distance } = closestPointOnPath(x, y, el);
-    if (distance <= bestDistance) {
-      bestPath = el;
-      bestDistance = distance;
-    }
-  }
-
-  return bestPath ? { kind: "path", el: bestPath } : null;
+  return bestEl;
 }
 
-function stillAttached(target: Target, x: number, y: number): boolean {
-  if (!document.contains(target.el)) {
+function stillAttached(target: Element, x: number, y: number): boolean {
+  if (!document.contains(target)) {
     return false;
   }
 
-  if (target.kind === "box") {
-    return (
-      distanceToRect(x, y, target.el.getBoundingClientRect()) <=
-      ATTACHMENT_RADIUS
-    );
-  }
-
-  return closestPointOnPath(x, y, target.el).distance <= ATTACHMENT_RADIUS;
-}
-
-function boxForTarget(target: Target, x: number, y: number): Box {
-  if (target.kind === "box") {
-    return boxFromElement(target.el);
-  }
-
-  const nearest = closestPointOnPath(x, y, target.el);
-  return boxFromPathPoint(nearest.x, nearest.y);
+  return (
+    distanceToRect(x, y, target.getBoundingClientRect()) <= ATTACHMENT_RADIUS
+  );
 }
 
 export default function Reticle() {
   const elRef = useRef<HTMLDivElement>(null);
-  const attachedRef = useRef<Target | null>(null);
+  const attachedRef = useRef<Element | null>(null);
   const pointerRef = useRef({ x: 0, y: 0, inside: false });
 
   useEffect(() => {
@@ -156,8 +80,8 @@ export default function Reticle() {
       node.style.transition = "width 150ms ease, height 150ms ease";
       node.style.width = `${IDLE_SIZE}px`;
       node.style.height = `${IDLE_SIZE}px`;
-      node.style.left = `${x + CURSOR_OFFSET}px`;
-      node.style.top = `${y + CURSOR_OFFSET}px`;
+      node.style.left = `${x - CURSOR_OFFSET - IDLE_SIZE}px`;
+      node.style.top = `${y - CURSOR_OFFSET - IDLE_SIZE}px`;
     };
 
     const applySnap = (box: Box) => {
@@ -181,7 +105,7 @@ export default function Reticle() {
 
       const attached = attachedRef.current;
       if (attached && stillAttached(attached, x, y)) {
-        applySnap(boxForTarget(attached, x, y));
+        applySnap(boxFromElement(attached));
         return;
       }
 
@@ -189,7 +113,7 @@ export default function Reticle() {
       const hit = pickHit(x, y);
       if (hit) {
         attachedRef.current = hit;
-        applySnap(boxForTarget(hit, x, y));
+        applySnap(boxFromElement(hit));
         return;
       }
 

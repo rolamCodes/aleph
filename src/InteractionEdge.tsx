@@ -35,18 +35,11 @@ export default function InteractionEdge({
   return (
     <>
       <BaseEdge id={id} path={edgePath} style={style} />
-      <circle
-        className="edge-terminal"
-        cx={originX}
-        cy={originY}
-        r={6}
-        data-reticle
-      />
+      <circle className="edge-terminal" cx={originX} cy={originY} r={6} />
       {label ? (
         <EdgeLabelRenderer>
           <div
             className="edge-label"
-            data-reticle
             style={{
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             }}
