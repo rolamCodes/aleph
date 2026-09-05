@@ -229,7 +229,7 @@ export default function Canvas() {
         nodeTypes={nodeTypes}
         fitView
       >
-        <Background color="#3a3a3a" gap={22} size={1.4} />
+        <Background color="#4a4a4a" gap={20} size={1.15} />
         <Controls />
         <Panel position="top-left">
           <button type="button" className="add-node" onClick={addContext}>

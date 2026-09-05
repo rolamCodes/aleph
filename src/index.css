@@ -9,7 +9,7 @@ body,
 }
 
 body {
-  background: #0a0a0a;
+  background: #000000;
   color: #ffffff;
   font-family: system-ui, sans-serif;
 }
@@ -20,15 +20,26 @@ body {
 }
 
 .react-flow {
-  --xy-background-color: #0a0a0a;
-  --xy-edge-stroke: #d4d4d4;
+  --xy-background-color: #000000;
+  --xy-edge-stroke: #e8e8e8;
   --xy-edge-stroke-selected: #ffffff;
-  --xy-connectionline-stroke: #d4d4d4;
+  --xy-connectionline-stroke: #e8e8e8;
+}
+
+.react-flow__node,
+.react-flow__node-context,
+.react-flow__node.selected,
+.react-flow__node-context.selected {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
 }
 
 .react-flow__controls {
   background: #1a1a1a;
-  border: 1px solid #3a3a3a;
+  border: 1px solid #2e2e2e;
   border-radius: 10px;
   box-shadow: none;
   overflow: hidden;
@@ -36,12 +47,12 @@ body {
 
 .react-flow__controls-button {
   background: #1a1a1a;
-  border-bottom: 1px solid #3a3a3a;
+  border-bottom: 1px solid #2e2e2e;
   fill: #e5e5e5;
 }
 
 .react-flow__controls-button:hover {
-  background: #252525;
+  background: #242424;
 }
 
 .react-flow__controls-button:last-child {
@@ -50,43 +61,67 @@ body {
 
 .react-flow__edge-text {
   font-size: 11px;
-  fill: #f5f5f5;
+  fill: #ffffff;
 }
 
 .react-flow__edge-textbg {
-  fill: #1a1a1a;
+  fill: #000000;
 }
 
 .react-flow__handle {
-  background: #2a2a2a;
-  border: 1.5px solid #8a8a8a;
-  height: 14px;
-  width: 14px;
+  background: #1a1a1a;
+  border: 1.5px solid #c8c8c8;
+  height: 12px;
+  width: 12px;
 }
 
-.react-flow__handle::after {
-  background: #8a8a8a;
+.react-flow__handle::after,
+.row-port::after {
+  background: #c8c8c8;
   border-radius: 50%;
   content: "";
-  height: 4px;
+  height: 3px;
   left: 50%;
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 4px;
+  width: 3px;
 }
 
-.context-node .react-flow__handle-left {
-  left: -7px;
+.row-port {
+  background: #1a1a1a;
+  border: 1.5px solid #3d3d3d;
+  border-radius: 50%;
+  flex-shrink: 0;
+  height: 12px;
+  margin-left: auto;
+  position: relative;
+  width: 12px;
 }
 
 .element-row .react-flow__handle-right {
-  right: 8px;
+  position: relative;
+  right: auto;
+  top: auto;
+  transform: none;
+}
+
+.context-header .react-flow__handle-left {
+  background: #000000;
+  border-color: #ffffff;
+  left: 0;
+  position: relative;
+  top: auto;
+  transform: none;
+}
+
+.context-header .react-flow__handle-left::after {
+  display: none;
 }
 
 .add-node {
   background: #1a1a1a;
-  border: 1px solid #3a3a3a;
+  border: 1px solid #2e2e2e;
   border-radius: 999px;
   color: #f5f5f5;
   cursor: pointer;
@@ -97,25 +132,22 @@ body {
 }
 
 .add-node:hover {
-  background: #252525;
+  background: #242424;
 }
 
 .context-node {
-  background: #1a1a1a;
-  border: 1px solid #3a3a3a;
-  border-radius: 20px;
   color: #ffffff;
   font-size: 13px;
   line-height: 1.4;
-  min-width: 220px;
-  padding: 14px 12px 12px;
+  min-width: 280px;
+  width: 280px;
 }
 
 .context-header {
   align-items: center;
   display: flex;
   gap: 8px;
-  padding: 2px 4px 10px;
+  padding: 0 0 10px;
 }
 
 .context-name {
@@ -134,71 +166,65 @@ body {
 }
 
 .context-kind--screen {
-  background: #3dff8a;
-  color: #0b1a10;
+  background: #14351f;
+  color: #5dff9a;
 }
 
 .context-kind--modal {
-  background: #c084fc;
-  color: #1a1024;
+  background: #2a1842;
+  color: #d4a4ff;
 }
 
 .context-kind--sheet {
-  background: #fbbf24;
-  color: #1a1408;
+  background: #3a2a10;
+  color: #f5c14a;
 }
 
 .context-kind--drawer {
-  background: #60a5fa;
-  color: #081018;
+  background: #10253a;
+  color: #7eb6ff;
 }
 
 .context-kind--popover {
-  background: #2dd4bf;
-  color: #081412;
+  background: #12352e;
+  color: #5eead4;
 }
 
-.context-items {
+.context-sections {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
+  gap: 10px;
 }
 
 .component-group {
-  background: #141414;
+  background: #1a1a1a;
   border: 1px solid #2a2a2a;
   border-radius: 16px;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin: 0;
-  padding: 10px;
+  padding: 12px;
 }
 
 .component-name {
   color: #888888;
   font-size: 12px;
   font-weight: 500;
-  padding: 0 4px;
+  padding: 0 2px 2px;
 }
 
 .element-row {
   align-items: center;
   background: #000000;
-  border-radius: 999px;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
   display: flex;
-  min-height: 36px;
-  padding: 8px 14px;
-  position: relative;
-}
-
-.element-row--interactive {
-  padding-right: 28px;
+  gap: 10px;
+  min-height: 38px;
+  padding: 8px 12px;
 }
 
 .element-label {
   color: #ffffff;
+  flex: 1;
 }
