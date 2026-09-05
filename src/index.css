@@ -9,6 +9,8 @@ body,
 }
 
 body {
+  background: #0a0a0a;
+  color: #ffffff;
   font-family: system-ui, sans-serif;
 }
 
@@ -17,88 +19,186 @@ body {
   height: 100%;
 }
 
-.add-node {
-  border: 1px solid #d0d5dd;
-  border-radius: 8px;
-  background: #fff;
-  color: #101828;
-  cursor: pointer;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 500;
-  padding: 8px 12px;
+.react-flow {
+  --xy-background-color: #0a0a0a;
+  --xy-edge-stroke: #d4d4d4;
+  --xy-edge-stroke-selected: #ffffff;
+  --xy-connectionline-stroke: #d4d4d4;
 }
 
-.add-node:hover {
-  background: #f9fafb;
+.react-flow__controls {
+  background: #1a1a1a;
+  border: 1px solid #3a3a3a;
+  border-radius: 10px;
+  box-shadow: none;
+  overflow: hidden;
 }
 
-.context-node {
-  min-width: 200px;
-  background: #fff;
-  border: 1px solid #d0d5dd;
-  border-radius: 8px;
-  color: #101828;
-  font-size: 13px;
-  line-height: 1.4;
-  padding: 10px 12px 8px;
+.react-flow__controls-button {
+  background: #1a1a1a;
+  border-bottom: 1px solid #3a3a3a;
+  fill: #e5e5e5;
 }
 
-.context-header {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding-bottom: 6px;
+.react-flow__controls-button:hover {
+  background: #252525;
 }
 
-.context-kind {
-  color: #667085;
-  font-size: 11px;
-  letter-spacing: 0.02em;
-  text-transform: lowercase;
-}
-
-.context-name {
-  font-weight: 600;
-}
-
-.context-items {
-  list-style: none;
-  margin: 0;
-  padding: 4px 0 0;
-  border-top: 1px solid #eaecf0;
-}
-
-.component-group {
-  margin: 6px 0;
-}
-
-.component-name {
-  color: #667085;
-  font-size: 11px;
-  font-weight: 600;
-  margin-bottom: 2px;
-}
-
-.element-row {
-  position: relative;
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 3px 10px 3px 0;
-}
-
-.element-kind {
-  color: #98a2b3;
-  font-size: 11px;
-  min-width: 44px;
-}
-
-.element-label {
-  color: #101828;
+.react-flow__controls-button:last-child {
+  border-bottom: none;
 }
 
 .react-flow__edge-text {
   font-size: 11px;
-  fill: #344054;
+  fill: #f5f5f5;
+}
+
+.react-flow__edge-textbg {
+  fill: #1a1a1a;
+}
+
+.react-flow__handle {
+  background: #2a2a2a;
+  border: 1.5px solid #8a8a8a;
+  height: 14px;
+  width: 14px;
+}
+
+.react-flow__handle::after {
+  background: #8a8a8a;
+  border-radius: 50%;
+  content: "";
+  height: 4px;
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px;
+}
+
+.context-node .react-flow__handle-left {
+  left: -7px;
+}
+
+.element-row .react-flow__handle-right {
+  right: 8px;
+}
+
+.add-node {
+  background: #1a1a1a;
+  border: 1px solid #3a3a3a;
+  border-radius: 999px;
+  color: #f5f5f5;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 14px;
+}
+
+.add-node:hover {
+  background: #252525;
+}
+
+.context-node {
+  background: #1a1a1a;
+  border: 1px solid #3a3a3a;
+  border-radius: 20px;
+  color: #ffffff;
+  font-size: 13px;
+  line-height: 1.4;
+  min-width: 220px;
+  padding: 14px 12px 12px;
+}
+
+.context-header {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  padding: 2px 4px 10px;
+}
+
+.context-name {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.context-kind {
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  padding: 4px 8px;
+  text-transform: lowercase;
+}
+
+.context-kind--screen {
+  background: #3dff8a;
+  color: #0b1a10;
+}
+
+.context-kind--modal {
+  background: #c084fc;
+  color: #1a1024;
+}
+
+.context-kind--sheet {
+  background: #fbbf24;
+  color: #1a1408;
+}
+
+.context-kind--drawer {
+  background: #60a5fa;
+  color: #081018;
+}
+
+.context-kind--popover {
+  background: #2dd4bf;
+  color: #081412;
+}
+
+.context-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.component-group {
+  background: #141414;
+  border: 1px solid #2a2a2a;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 10px;
+}
+
+.component-name {
+  color: #888888;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 0 4px;
+}
+
+.element-row {
+  align-items: center;
+  background: #000000;
+  border-radius: 999px;
+  display: flex;
+  min-height: 36px;
+  padding: 8px 14px;
+  position: relative;
+}
+
+.element-row--interactive {
+  padding-right: 28px;
+}
+
+.element-label {
+  color: #ffffff;
 }

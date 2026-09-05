@@ -3,8 +3,11 @@ import type { ContextNode as ContextNodeType, UIElement } from "./types";
 
 function ElementRow({ element }: { element: UIElement }) {
   return (
-    <div className="element-row">
-      <span className="element-kind">{element.kind}</span>
+    <div
+      className={
+        element.interactive ? "element-row element-row--interactive" : "element-row"
+      }
+    >
       <span className="element-label">{element.label}</span>
       {element.interactive ? (
         <Handle
@@ -19,11 +22,13 @@ function ElementRow({ element }: { element: UIElement }) {
 
 export default function ContextNode({ data }: NodeProps<ContextNodeType>) {
   return (
-    <div className="context-node">
+    <div className={`context-node context-node--${data.kind}`}>
       <Handle type="target" position={Position.Left} id="entry" />
       <header className="context-header">
-        <span className="context-kind">{data.kind}</span>
         <span className="context-name">{data.name}</span>
+        <span className={`context-kind context-kind--${data.kind}`}>
+          {data.kind}
+        </span>
       </header>
       {data.items.length > 0 ? (
         <ul className="context-items">
