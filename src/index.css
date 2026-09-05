@@ -186,17 +186,17 @@ body {
 
 .component-group {
   background: #1b1b1b;
-  border: 1px solid #292929;
+  border: 2px solid #292929;
   border-radius: 21px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 14px 7px 7px;
+  padding: 12px 4px 4px;
 }
 
 .component-group--untitled {
-  padding-top: 7px;
+  padding-top: 12px;
 }
 
 .component-name {
@@ -215,8 +215,7 @@ body {
   box-sizing: border-box;
   display: flex;
   gap: 8px;
-  height: 39px;
-  padding: 1px 1px 1px 20px;
+  padding: 2px 2px 2px 20px;
 }
 
 .element-label {
