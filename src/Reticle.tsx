@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 
 const IDLE_SIZE = 8;
 const CURSOR_OFFSET = 12;
-const ATTACHMENT_RADIUS = 40;
+const ATTACHMENT_RADIUS = 80;
 const PADDING = 2;
 const TARGET_SELECTOR = "[data-reticle], .react-flow__edge";
 
