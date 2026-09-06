@@ -18,8 +18,7 @@ import type {
   InteractionEdge as InteractionEdgeType,
   PointedTarget,
 } from "./types";
-import { requestGraphPatch } from "./voice/gemini";
-import { applyGraphPatch } from "./voice/graphPatch";
+import { runVoiceCommand } from "./voice/gemini";
 import { usePushToTalk } from "./voice/usePushToTalk";
 
 const nodeTypes = {
@@ -229,12 +228,6 @@ export default function Canvas() {
 
   const onRecording = useCallback(
     async (audio: Blob, target: PointedTarget): Promise<void> => {
-      const patch = await requestGraphPatch({
-        audio,
-        target,
-        nodes: nodesRef.current,
-        edges: edgesRef.current,
-      });
       const pointedContextId =
         target.kind === "context"
           ? target.id
@@ -248,20 +241,25 @@ export default function Canvas() {
           x: window.innerWidth / 2,
           y: window.innerHeight / 2,
         }) ?? { x: 200, y: 200 };
-      const result = applyGraphPatch(
-        nodesRef.current,
-        edgesRef.current,
-        patch,
-        {
+
+      await runVoiceCommand({
+        audio,
+        target,
+        initialGraph: {
+          nodes: nodesRef.current,
+          edges: edgesRef.current,
+        },
+        layout: {
           defaultAnchorContextId: pointedContextId,
           defaultPosition,
         },
-      );
-
-      nodesRef.current = result.nodes;
-      edgesRef.current = result.edges;
-      setNodes(result.nodes);
-      setEdges(result.edges);
+        onMutation: (graph) => {
+          nodesRef.current = graph.nodes;
+          edgesRef.current = graph.edges;
+          setNodes(graph.nodes);
+          setEdges(graph.edges);
+        },
+      });
     },
     [setEdges, setNodes],
   );
