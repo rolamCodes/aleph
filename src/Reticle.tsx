@@ -99,9 +99,6 @@ export default function Reticle({
   const attachedRef = useRef<Element | null>(null);
   const pointerRef = useRef({ x: 0, y: 0, inside: false });
   const targetKeyRef = useRef("canvas");
-  const onTargetChangeRef = useRef(onTargetChange);
-
-  onTargetChangeRef.current = onTargetChange;
 
   useEffect(() => {
     const node = elRef.current;
@@ -129,7 +126,7 @@ export default function Reticle({
       const key = targetKey(target);
       if (key !== targetKeyRef.current) {
         targetKeyRef.current = key;
-        onTargetChangeRef.current(target);
+        onTargetChange(target);
       }
     };
 
@@ -195,7 +192,7 @@ export default function Reticle({
       document.documentElement.removeEventListener("pointerleave", onLeave);
       cancelAnimationFrame(raf);
     };
-  }, []);
+  }, [onTargetChange]);
 
   return (
     <div

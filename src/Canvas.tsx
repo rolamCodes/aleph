@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   addEdge,
   Background,
@@ -201,8 +201,10 @@ export default function Canvas() {
     useRef<ReactFlowInstance<ContextNodeType, InteractionEdgeType>>(null);
   const nodesRef = useRef(nodes);
 
-  edgesRef.current = edges;
-  nodesRef.current = nodes;
+  useEffect(() => {
+    edgesRef.current = edges;
+    nodesRef.current = nodes;
+  }, [edges, nodes]);
 
   const onConnect = useCallback(
     (connection: Connection) => {

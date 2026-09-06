@@ -440,7 +440,7 @@ export function applyGraphPatch(
 ): PatchResult {
   const operations = parseOperations(value);
   const nodes = cloneNodes(currentNodes);
-  let edges = currentEdges.map((edge) => ({
+  let edges: InteractionEdge[] = currentEdges.map((edge) => ({
     ...edge,
     data: edge.data ? { ...edge.data } : undefined,
   }));

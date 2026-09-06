@@ -99,8 +99,10 @@ export function usePushToTalk({
   const requestIdRef = useRef(0);
   const statusRef = useRef<VoiceStatus>("idle");
 
-  onRecordingRef.current = onRecording;
-  pointedTargetRef.current = pointedTarget;
+  useEffect(() => {
+    onRecordingRef.current = onRecording;
+    pointedTargetRef.current = pointedTarget;
+  }, [onRecording, pointedTarget]);
 
   useEffect(() => {
     mountedRef.current = true;
