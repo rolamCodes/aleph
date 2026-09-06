@@ -40,9 +40,28 @@ body {
   z-index: 10000;
 }
 
-.reticle--requesting,
 .reticle--processing {
   border-color: #f3bd42;
+}
+
+.reticle--processing::after {
+  animation: reticle-spin 700ms linear infinite;
+  border: 2px solid rgb(243 189 66 / 30%);
+  border-radius: 50%;
+  border-top-color: #f3bd42;
+  box-sizing: border-box;
+  content: "";
+  height: 11px;
+  position: absolute;
+  right: -18px;
+  top: -1px;
+  width: 11px;
+}
+
+@keyframes reticle-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .reticle--listening {
@@ -50,36 +69,6 @@ body {
 }
 
 .reticle--error {
-  border-color: #ff5f57;
-}
-
-.voice-status {
-  background: #111313;
-  border: 1px solid #303435;
-  border-radius: 999px;
-  bottom: 20px;
-  color: #ffffff;
-  font-size: 13px;
-  left: 50%;
-  line-height: 1;
-  padding: 8px 12px;
-  pointer-events: none;
-  position: fixed;
-  text-transform: lowercase;
-  transform: translateX(-50%);
-  z-index: 10001;
-}
-
-.voice-status--listening {
-  border-color: #4ade80;
-}
-
-.voice-status--requesting,
-.voice-status--processing {
-  border-color: #f3bd42;
-}
-
-.voice-status--error {
   border-color: #ff5f57;
 }
 

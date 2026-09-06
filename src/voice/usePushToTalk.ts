@@ -165,7 +165,7 @@ export function usePushToTalk({
       const requestId = requestIdRef.current + 1;
       requestIdRef.current = requestId;
       const target = pointedTargetRef.current;
-      updateStatus("requesting");
+      updateStatus("listening");
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -185,6 +185,18 @@ export function usePushToTalk({
 
         const audioContext = new AudioContext();
         await audioContext.resume();
+        if (
+          !mountedRef.current ||
+          !pressedRef.current ||
+          requestId !== requestIdRef.current
+        ) {
+          for (const track of stream.getTracks()) {
+            track.stop();
+          }
+          await audioContext.close();
+          updateStatus("idle");
+          return;
+        }
         const source = audioContext.createMediaStreamSource(stream);
         const processor = audioContext.createScriptProcessor(BUFFER_SIZE, 1, 1);
         const silentGain = audioContext.createGain();
@@ -246,7 +258,7 @@ export function usePushToTalk({
 
       event.preventDefault();
       pressedRef.current = false;
-      if (statusRef.current === "requesting") {
+      if (!activeRef.current) {
         requestIdRef.current += 1;
         updateStatus("idle");
         return;

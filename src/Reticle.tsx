@@ -88,10 +88,42 @@ function targetKey(target: PointedTarget): string {
   return target.kind === "canvas" ? target.kind : `${target.kind}:${target.id}`;
 }
 
+function elementForTarget(target: PointedTarget): Element | null {
+  if (target.kind === "canvas") {
+    return null;
+  }
+  if (target.kind === "edge") {
+    for (const edge of document.querySelectorAll<HTMLElement>(
+      ".react-flow__edge",
+    )) {
+      if (edge.dataset.id === target.id) {
+        return edge;
+      }
+    }
+    return null;
+  }
+
+  for (const element of document.querySelectorAll<HTMLElement>(
+    "[data-reticle-kind]",
+  )) {
+    if (
+      element.dataset.reticleKind === target.kind &&
+      element.dataset.reticleId === target.id &&
+      (target.kind === "context" ||
+        element.dataset.reticleContextId === target.contextId)
+    ) {
+      return element;
+    }
+  }
+  return null;
+}
+
 export default function Reticle({
+  focusTarget,
   onTargetChange,
   status,
 }: {
+  focusTarget?: PointedTarget;
   onTargetChange: (target: PointedTarget) => void;
   status: VoiceStatus;
 }) {
@@ -132,6 +164,24 @@ export default function Reticle({
 
     const update = () => {
       const { x, y, inside } = pointerRef.current;
+      if (status === "processing") {
+        const focused =
+          focusTarget && focusTarget.kind !== "canvas"
+            ? elementForTarget(focusTarget)
+            : null;
+        const processingElement =
+          focused ??
+          (attachedRef.current && document.contains(attachedRef.current)
+            ? attachedRef.current
+            : null);
+        if (processingElement) {
+          node.style.opacity = "1";
+          attachedRef.current = processingElement;
+          applySnap(boxFromElement(processingElement));
+          return;
+        }
+      }
+
       if (!inside) {
         node.style.opacity = "0";
         reportTarget({ kind: "canvas" });
@@ -177,7 +227,10 @@ export default function Reticle({
 
     let raf = 0;
     const loop = () => {
-      if (attachedRef.current && pointerRef.current.inside) {
+      if (
+        status === "processing" ||
+        (attachedRef.current && pointerRef.current.inside)
+      ) {
         update();
       }
       raf = requestAnimationFrame(loop);
@@ -192,7 +245,7 @@ export default function Reticle({
       document.documentElement.removeEventListener("pointerleave", onLeave);
       cancelAnimationFrame(raf);
     };
-  }, [onTargetChange]);
+  }, [focusTarget, onTargetChange, status]);
 
   return (
     <div

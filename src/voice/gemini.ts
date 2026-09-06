@@ -269,6 +269,100 @@ function graphSnapshot(nodes: ContextNode[], edges: InteractionEdge[]): object {
   };
 }
 
+function stringArg(
+  args: Record<string, unknown> | undefined,
+  key: string,
+): string | undefined {
+  const value = args?.[key];
+  return typeof value === "string" ? value : undefined;
+}
+
+function itemTarget(
+  graph: GraphState,
+  contextId: string | undefined,
+  itemId: string | undefined,
+): PointedTarget {
+  if (!contextId || !itemId) {
+    return { kind: "canvas" };
+  }
+  const context = graph.nodes.find((node) => node.id === contextId);
+  if (!context) {
+    return { kind: "canvas" };
+  }
+  for (const item of context.data.items) {
+    if (item.id === itemId) {
+      return {
+        kind: item.type === "component" ? "component" : "element",
+        id: itemId,
+        contextId,
+      };
+    }
+    if (
+      item.type === "component" &&
+      item.elements.some((element) => element.id === itemId)
+    ) {
+      return { kind: "element", id: itemId, contextId };
+    }
+  }
+  return { kind: "context", id: contextId };
+}
+
+function mutationTarget(call: FunctionCall, graph: GraphState): PointedTarget {
+  const args = call.args;
+  switch (call.name) {
+    case "addContext":
+      return {
+        kind: "context",
+        id: stringArg(args, "id") ?? "",
+      };
+    case "updateContext":
+      return {
+        kind: "context",
+        id: stringArg(args, "contextId") ?? "",
+      };
+    case "removeContext":
+      return { kind: "canvas" };
+    case "addComponent":
+    case "updateComponent":
+      return {
+        kind: "component",
+        id:
+          stringArg(args, call.name === "addComponent" ? "id" : "componentId") ??
+          "",
+        contextId: stringArg(args, "contextId") ?? "",
+      };
+    case "addElement":
+    case "updateElement":
+      return {
+        kind: "element",
+        id:
+          stringArg(args, call.name === "addElement" ? "id" : "elementId") ?? "",
+        contextId: stringArg(args, "contextId") ?? "",
+      };
+    case "moveItem":
+      return itemTarget(
+        graph,
+        stringArg(args, "contextId"),
+        stringArg(args, "itemId"),
+      );
+    case "removeItem": {
+      const contextId = stringArg(args, "contextId");
+      return contextId
+        ? { kind: "context", id: contextId }
+        : { kind: "canvas" };
+    }
+    case "addEdge":
+    case "updateEdge":
+      return {
+        kind: "edge",
+        id: stringArg(args, call.name === "addEdge" ? "id" : "edgeId") ?? "",
+      };
+    case "removeEdge":
+    default:
+      return { kind: "canvas" };
+  }
+}
+
 function requireOneCall(
   calls: FunctionCall[] | undefined,
 ): FunctionCall & { name: string } {
@@ -293,7 +387,7 @@ export async function runVoiceCommand({
   target: PointedTarget;
   initialGraph: GraphState;
   layout: ToolLoopLayout;
-  onMutation: (graph: GraphState) => void;
+  onMutation: (graph: GraphState, target: PointedTarget) => void;
 }): Promise<void> {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   if (!apiKey) {
@@ -353,7 +447,7 @@ export async function runVoiceCommand({
         },
         layout,
       );
-      onMutation(graph);
+      onMutation(graph, mutationTarget(call, graph));
       result = {
         ok: true,
         applied: call.name,

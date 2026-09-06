@@ -195,6 +195,9 @@ export default function Canvas() {
   const [pointedTarget, setPointedTarget] = useState<PointedTarget>({
     kind: "canvas",
   });
+  const [processingTarget, setProcessingTarget] = useState<PointedTarget>({
+    kind: "canvas",
+  });
   const edgesRef = useRef(edges);
   const instanceRef =
     useRef<ReactFlowInstance<ContextNodeType, InteractionEdgeType>>(null);
@@ -228,6 +231,7 @@ export default function Canvas() {
 
   const onRecording = useCallback(
     async (audio: Blob, target: PointedTarget): Promise<void> => {
+      setProcessingTarget(target);
       const pointedContextId =
         target.kind === "context"
           ? target.id
@@ -253,9 +257,10 @@ export default function Canvas() {
           defaultAnchorContextId: pointedContextId,
           defaultPosition,
         },
-        onMutation: (graph) => {
+        onMutation: (graph, mutationTarget) => {
           nodesRef.current = graph.nodes;
           edgesRef.current = graph.edges;
+          setProcessingTarget(mutationTarget);
           setNodes(graph.nodes);
           setEdges(graph.edges);
         },
@@ -285,21 +290,13 @@ export default function Canvas() {
       >
         <Background color="#303435" gap={20} size={2} />
       </ReactFlow>
-      <Reticle onTargetChange={setPointedTarget} status={voice.status} />
-      {voice.status !== "idle" ? (
-        <div
-          className={`voice-status voice-status--${voice.status}`}
-          role="status"
-          aria-live="polite"
-          title={voice.error ?? undefined}
-        >
-          {voice.status === "requesting"
-            ? "mic"
-            : voice.status === "error"
-              ? "voice error"
-              : voice.status}
-        </div>
-      ) : null}
+      <Reticle
+        focusTarget={
+          voice.status === "processing" ? processingTarget : undefined
+        }
+        onTargetChange={setPointedTarget}
+        status={voice.status}
+      />
     </div>
   );
 }
