@@ -59,7 +59,13 @@ function ElementRow({
   );
 
   return (
-    <div className="element-row" data-reticle>
+    <div
+      className="element-row"
+      data-reticle
+      data-reticle-kind="element"
+      data-reticle-id={element.id}
+      data-reticle-context-id={nodeId}
+    >
       <span className="element-label">{element.label}</span>
       {element.interactive ? (
         <Handle
@@ -91,6 +97,8 @@ export default function ContextNode({ id, data }: NodeProps<ContextNodeType>) {
     <div
       className={`context-node context-node--${data.kind}`}
       data-reticle
+      data-reticle-kind="context"
+      data-reticle-id={id}
     >
       <header className="context-header">
         <Handle
@@ -118,7 +126,10 @@ export default function ContextNode({ id, data }: NodeProps<ContextNodeType>) {
                   ? "component-group"
                   : "component-group component-group--untitled"
               }
-              data-reticle
+              data-reticle={section.name ? true : undefined}
+              data-reticle-kind={section.name ? "component" : undefined}
+              data-reticle-id={section.name ? section.id : undefined}
+              data-reticle-context-id={section.name ? id : undefined}
             >
               {section.name ? (
                 <div className="component-name">{section.name}</div>

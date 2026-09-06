@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   addEdge,
   Background,
@@ -7,6 +7,7 @@ import {
   useNodesState,
   type Connection,
   type NodeTypes,
+  type ReactFlowInstance,
 } from "@xyflow/react";
 import ContextNode from "./ContextNode";
 import type { EdgeTypes } from "@xyflow/react";
@@ -15,7 +16,11 @@ import Reticle from "./Reticle";
 import type {
   ContextNode as ContextNodeType,
   InteractionEdge as InteractionEdgeType,
+  PointedTarget,
 } from "./types";
+import { requestGraphPatch } from "./voice/gemini";
+import { applyGraphPatch } from "./voice/graphPatch";
+import { usePushToTalk } from "./voice/usePushToTalk";
 
 const nodeTypes = {
   context: ContextNode,
@@ -186,8 +191,18 @@ function isValidInteraction(
 }
 
 export default function Canvas() {
-  const [nodes, , onNodesChange] = useNodesState(initialNodes);
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [pointedTarget, setPointedTarget] = useState<PointedTarget>({
+    kind: "canvas",
+  });
+  const edgesRef = useRef(edges);
+  const instanceRef =
+    useRef<ReactFlowInstance<ContextNodeType, InteractionEdgeType>>(null);
+  const nodesRef = useRef(nodes);
+
+  edgesRef.current = edges;
+  nodesRef.current = nodes;
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -210,6 +225,47 @@ export default function Canvas() {
     [setEdges],
   );
 
+  const onRecording = useCallback(
+    async (audio: Blob, target: PointedTarget): Promise<void> => {
+      const patch = await requestGraphPatch({
+        audio,
+        target,
+        nodes: nodesRef.current,
+        edges: edgesRef.current,
+      });
+      const pointedContextId =
+        target.kind === "context"
+          ? target.id
+          : target.kind === "component" || target.kind === "element"
+            ? target.contextId
+            : target.kind === "edge"
+              ? edgesRef.current.find((edge) => edge.id === target.id)?.target
+              : undefined;
+      const defaultPosition =
+        instanceRef.current?.screenToFlowPosition({
+          x: window.innerWidth / 2,
+          y: window.innerHeight / 2,
+        }) ?? { x: 200, y: 200 };
+      const result = applyGraphPatch(
+        nodesRef.current,
+        edgesRef.current,
+        patch,
+        {
+          defaultAnchorContextId: pointedContextId,
+          defaultPosition,
+        },
+      );
+
+      nodesRef.current = result.nodes;
+      edgesRef.current = result.edges;
+      setNodes(result.nodes);
+      setEdges(result.edges);
+    },
+    [setEdges, setNodes],
+  );
+
+  const voice = usePushToTalk({ pointedTarget, onRecording });
+
   return (
     <div className="canvas">
       <ReactFlow
@@ -222,10 +278,28 @@ export default function Canvas() {
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
+        onInit={(instance) => {
+          instanceRef.current = instance;
+        }}
+        panActivationKeyCode={null}
       >
         <Background color="#303435" gap={20} size={2} />
       </ReactFlow>
-      <Reticle />
+      <Reticle onTargetChange={setPointedTarget} status={voice.status} />
+      {voice.status !== "idle" ? (
+        <div
+          className={`voice-status voice-status--${voice.status}`}
+          role="status"
+          aria-live="polite"
+          title={voice.error ?? undefined}
+        >
+          {voice.status === "requesting"
+            ? "mic"
+            : voice.status === "error"
+              ? "voice error"
+              : voice.status}
+        </div>
+      ) : null}
     </div>
   );
 }
