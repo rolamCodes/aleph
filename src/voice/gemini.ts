@@ -269,11 +269,13 @@ function graphSnapshot(nodes: ContextNode[], edges: InteractionEdge[]): object {
   };
 }
 
-function requireOneCall(calls: FunctionCall[] | undefined): FunctionCall {
+function requireOneCall(
+  calls: FunctionCall[] | undefined,
+): FunctionCall & { name: string } {
   if (calls?.length !== 1 || !calls[0]?.name) {
     throw new Error("Gemini must return exactly one tool call per step");
   }
-  return calls[0];
+  return calls[0] as FunctionCall & { name: string };
 }
 
 function errorMessage(reason: unknown): string {
