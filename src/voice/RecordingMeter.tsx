@@ -9,12 +9,14 @@ export default function RecordingMeter({
   breadcrumbs: string[];
   mediaRecorder: MediaRecorder | null;
 }) {
-  const [elapsedMs, setElapsedMs] = useState(0);
+  const [remainingMs, setRemainingMs] = useState(MAX_RECORDING_MS);
 
   useEffect(() => {
     const startedAt = Date.now();
     const tick = (): void => {
-      setElapsedMs(Math.min(MAX_RECORDING_MS, Date.now() - startedAt));
+      setRemainingMs(
+        Math.max(0, MAX_RECORDING_MS - (Date.now() - startedAt)),
+      );
     };
     tick();
     const interval = window.setInterval(tick, 250);
@@ -47,7 +49,7 @@ export default function RecordingMeter({
         <div className="recording-meter-status">
           <span className="recording-meter-dot" />
           <span className="recording-meter-time">
-            {Math.floor(elapsedMs / 1000)}s
+            {Math.ceil(remainingMs / 1000)}s
           </span>
         </div>
         <div className="recording-meter-tape">
