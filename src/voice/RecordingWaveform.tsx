@@ -1,12 +1,14 @@
 import { useEffect, useRef } from "react";
-import { MAX_RECORDING_MS } from "./usePushToTalk";
 
+const BAR_WIDTH = 2;
+const BAR_GAP = 2;
 const BAR_COLOR = "#ffffff";
 const MIN_BAR_HEIGHT = 1;
 const PLAYHEAD_COLOR = "#ff3b30";
 const PLAYHEAD_WIDTH = 1.5;
 const REST_COLOR = "#747474";
-const REST_HEIGHT = 1;
+const REST_SIZE = 2;
+const SAMPLE_INTERVAL_MS = 50;
 
 // Mic hiss sits just above zero, so gate it out and rescale what is left to
 // keep speech off the ceiling.
@@ -14,9 +16,7 @@ const NOISE_FLOOR = 0.02;
 const GAIN = 2.5;
 
 type Tape = {
-  barWidth: number;
   height: number;
-  pitch: number;
   width: number;
 };
 
@@ -56,27 +56,31 @@ function draw(
   context.clearRect(0, 0, tape.width, tape.height);
 
   levels.forEach((level, index) => {
-    const x = index * tape.pitch;
+    const x = index * (BAR_WIDTH + BAR_GAP);
     if (index < recorded) {
       const barHeight = Math.max(MIN_BAR_HEIGHT, level * tape.height);
       context.fillStyle = BAR_COLOR;
-      fillBar(context, x, middle - barHeight / 2, tape.barWidth, barHeight);
+      fillBar(context, x, middle - barHeight / 2, BAR_WIDTH, barHeight);
       return;
     }
     context.fillStyle = REST_COLOR;
     fillBar(
       context,
       x,
-      middle - REST_HEIGHT / 2,
-      tape.barWidth,
-      REST_HEIGHT,
+      middle - REST_SIZE / 2,
+      REST_SIZE,
+      REST_SIZE,
     );
   });
 
-  if (recorded < levels.length) {
-    context.fillStyle = PLAYHEAD_COLOR;
-    context.fillRect(recorded * tape.pitch, 0, PLAYHEAD_WIDTH, tape.height);
-  }
+  const playhead = Math.min(recorded, levels.length - 1);
+  context.fillStyle = PLAYHEAD_COLOR;
+  context.fillRect(
+    playhead * (BAR_WIDTH + BAR_GAP),
+    0,
+    PLAYHEAD_WIDTH,
+    tape.height,
+  );
 }
 
 export default function RecordingWaveform({
@@ -105,12 +109,8 @@ export default function RecordingWaveform({
     }
     context.scale(ratio, ratio);
 
-    // One bar plus one gap per pair of device pixels, so the tape carries as
-    // many slots as the display can draw crisply.
     const tape: Tape = {
-      barWidth: 1 / ratio,
       height,
-      pitch: 2 / ratio,
       width,
     };
 
@@ -121,24 +121,35 @@ export default function RecordingWaveform({
     source.connect(analyser);
     void audioContext.resume();
 
-    const slotCount = Math.max(1, Math.floor(width / tape.pitch));
+    const slotCount = Math.max(1, Math.floor(width / (BAR_WIDTH + BAR_GAP)));
     const levels = Array.from({ length: slotCount }, () => 0);
     const samples = new Uint8Array(analyser.fftSize);
-    const startedAt = Date.now();
+    let currentPeak = 0;
+    let lastSampleAt = performance.now();
+    let recorded = 0;
     let frame = 0;
 
     const render = (): void => {
       if (mediaRecorder.state !== "recording") {
         return;
       }
-      const elapsedMs = Math.min(MAX_RECORDING_MS, Date.now() - startedAt);
-      const slot = Math.min(
-        slotCount - 1,
-        Math.floor((elapsedMs / MAX_RECORDING_MS) * slotCount),
-      );
       analyser.getByteTimeDomainData(samples);
-      levels[slot] = Math.max(levels[slot] ?? 0, peakLevel(samples));
-      draw(context, levels, slot + 1, tape);
+      currentPeak = Math.max(currentPeak, peakLevel(samples));
+
+      const now = performance.now();
+      if (now - lastSampleAt >= SAMPLE_INTERVAL_MS) {
+        if (recorded < slotCount) {
+          levels[recorded] = currentPeak;
+          recorded += 1;
+        } else {
+          levels.copyWithin(0, 1);
+          levels[slotCount - 1] = currentPeak;
+        }
+        currentPeak = 0;
+        lastSampleAt = now;
+      }
+
+      draw(context, levels, recorded, tape);
       frame = requestAnimationFrame(render);
     };
 
