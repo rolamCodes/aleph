@@ -94,6 +94,46 @@ body {
   z-index: 10000;
 }
 
+@property --reticle-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.reticle--listening::before {
+  animation: reticle-glow-spin 1.2s linear infinite;
+  background: conic-gradient(
+    from var(--reticle-angle),
+    transparent 0 68%,
+    rgb(59 158 255 / 0%) 68%,
+    #3b9eff 88%,
+    #9fd2ff 96%,
+    #3b9eff
+  );
+  border-radius: 7px;
+  box-sizing: border-box;
+  content: "";
+  filter: drop-shadow(0 0 6px #3b9eff);
+  inset: -3px;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  padding: 2px;
+  pointer-events: none;
+  position: absolute;
+}
+
+@keyframes reticle-glow-spin {
+  to {
+    --reticle-angle: 360deg;
+  }
+}
+
 .reticle--processing {
   border-color: #f3bd42;
 }
@@ -356,100 +396,4 @@ body {
   flex: 1;
   font-size: 20px;
   line-height: 24px;
-}
-
-.recording-meter {
-  background: #1b1b1b;
-  border: 2px solid #292929;
-  border-radius: 25px;
-  bottom: 20px;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  left: 50%;
-  padding: 14px 16px;
-  pointer-events: none;
-  position: absolute;
-  transform: translateX(-50%);
-  width: 380px;
-  z-index: 1000;
-}
-
-.recording-meter-breadcrumbs {
-  color: #747474;
-  font-size: 14px;
-  line-height: 18px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.recording-meter-separator {
-  color: #4a4a4a;
-  margin: 0 7px;
-}
-
-.recording-meter-crumb--active {
-  color: #ffffff;
-}
-
-.recording-meter-row {
-  align-items: center;
-  display: flex;
-  justify-content: space-between;
-}
-
-.recording-meter-status {
-  align-items: center;
-  display: flex;
-  gap: 10px;
-}
-
-.recording-meter-dot {
-  background: #ff3b30;
-  border-radius: 50%;
-  height: 10px;
-  width: 10px;
-}
-
-.recording-meter-time {
-  color: #ffffff;
-  font-size: 18px;
-  line-height: 22px;
-}
-
-.recording-meter-tape {
-  align-items: center;
-  display: flex;
-  gap: 8px;
-}
-
-.recording-meter-wave,
-.recording-meter-rest {
-  align-items: center;
-  display: flex;
-  gap: 3px;
-  height: 18px;
-}
-
-.recording-meter-bar {
-  background: #ffffff;
-  border-radius: 1px;
-  display: block;
-  width: 2px;
-}
-
-.recording-meter-playhead {
-  background: #ff3b30;
-  height: 18px;
-  width: 1.5px;
-}
-
-.recording-meter-tick {
-  background: #747474;
-  border-radius: 50%;
-  display: block;
-  height: 4px;
-  width: 4px;
 }
