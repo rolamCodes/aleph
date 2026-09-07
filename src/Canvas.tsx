@@ -190,6 +190,76 @@ function isValidInteraction(
   return sourceHandle.startsWith("exit:") && targetHandle === "entry";
 }
 
+function elementBreadcrumbs(
+  node: ContextNodeType,
+  elementId: string,
+): string[] {
+  for (const item of node.data.items) {
+    if (item.type === "element" && item.id === elementId) {
+      return [item.label];
+    }
+    if (item.type === "component") {
+      const element = item.elements.find(
+        (candidate) => candidate.id === elementId,
+      );
+      if (element) {
+        return [item.name, element.label];
+      }
+    }
+  }
+  return [];
+}
+
+function recordingBreadcrumbs(
+  nodes: ContextNodeType[],
+  edges: InteractionEdgeType[],
+  target: PointedTarget | null,
+): string[] {
+  if (!target || target.kind === "canvas") {
+    return ["Tree"];
+  }
+
+  if (target.kind === "edge") {
+    const edge = edges.find((candidate) => candidate.id === target.id);
+    if (!edge) {
+      return ["Tree"];
+    }
+    const source = nodes.find((node) => node.id === edge.source);
+    const destination = nodes.find((node) => node.id === edge.target);
+    const elementId = (edge.sourceHandle ?? "").replace(/^exit:/, "");
+    return [
+      "Tree",
+      ...(source ? [source.data.name, ...elementBreadcrumbs(source, elementId)] : []),
+      ...(destination ? [destination.data.name] : []),
+    ];
+  }
+
+  const contextId =
+    target.kind === "context" ? target.id : target.contextId;
+  const context = nodes.find((node) => node.id === contextId);
+  if (!context) {
+    return ["Tree"];
+  }
+  if (target.kind === "context") {
+    return ["Tree", context.data.name];
+  }
+  if (target.kind === "component") {
+    const component = context.data.items.find(
+      (item) => item.type === "component" && item.id === target.id,
+    );
+    return [
+      "Tree",
+      context.data.name,
+      ...(component?.type === "component" ? [component.name] : []),
+    ];
+  }
+  return [
+    "Tree",
+    context.data.name,
+    ...elementBreadcrumbs(context, target.id),
+  ];
+}
+
 export default function Canvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -299,7 +369,15 @@ export default function Canvas() {
         status={voice.status}
       />
       {voice.status === "listening" ? (
-        <RecordingMeter elapsedMs={voice.meter.elapsedMs} levels={voice.meter.levels} />
+        <RecordingMeter
+          breadcrumbs={recordingBreadcrumbs(
+            nodes,
+            edges,
+            voice.recordingTarget,
+          )}
+          elapsedMs={voice.meter.elapsedMs}
+          levels={voice.meter.levels}
+        />
       ) : null}
     </div>
   );

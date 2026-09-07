@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { PointedTarget, VoiceStatus } from "../types";
 
 export const MAX_RECORDING_MS = 30_000;
-export const RECORDING_SLOT_COUNT = 24;
+export const RECORDING_SLOT_COUNT = 20;
 const BUFFER_SIZE = 4096;
 
 type ActiveCapture = {
@@ -116,11 +116,14 @@ export function usePushToTalk({
 }): {
   error: string | null;
   meter: RecordingMeterState;
+  recordingTarget: PointedTarget | null;
   status: VoiceStatus;
 } {
   const [status, setStatus] = useState<VoiceStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [meter, setMeter] = useState<RecordingMeterState>(emptyMeter);
+  const [recordingTarget, setRecordingTarget] =
+    useState<PointedTarget | null>(null);
   const activeRef = useRef<ActiveCapture | null>(null);
   const mountedRef = useRef(true);
   const onRecordingRef = useRef(onRecording);
@@ -153,6 +156,7 @@ export function usePushToTalk({
         releaseCapture(active);
       }
       setMeter(emptyMeter());
+      setRecordingTarget(null);
       updateStatus("idle");
     };
 
@@ -161,6 +165,7 @@ export function usePushToTalk({
         reason instanceof Error ? reason.message : "Voice command failed";
       setError(message);
       setMeter(emptyMeter());
+      setRecordingTarget(null);
       updateStatus("error");
     };
 
@@ -175,6 +180,7 @@ export function usePushToTalk({
       releaseCapture(active);
       const audio = encodeWav(active.chunks, sampleRate);
       setMeter(emptyMeter());
+      setRecordingTarget(null);
       if (!audio) {
         updateStatus("idle");
         return;
@@ -198,6 +204,7 @@ export function usePushToTalk({
       const requestId = requestIdRef.current + 1;
       requestIdRef.current = requestId;
       const target = pointedTargetRef.current;
+      setRecordingTarget(target);
       updateStatus("listening");
 
       try {
@@ -319,6 +326,8 @@ export function usePushToTalk({
       pressedRef.current = false;
       if (!activeRef.current) {
         requestIdRef.current += 1;
+        setMeter(emptyMeter());
+        setRecordingTarget(null);
         updateStatus("idle");
         return;
       }
@@ -338,5 +347,5 @@ export function usePushToTalk({
     };
   }, []);
 
-  return { error, meter, status };
+  return { error, meter, recordingTarget, status };
 }

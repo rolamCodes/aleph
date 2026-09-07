@@ -5,9 +5,10 @@ import {
 } from "./usePushToTalk";
 
 export default function RecordingMeter({
+  breadcrumbs,
   elapsedMs,
   levels,
-}: RecordingMeterState) {
+}: RecordingMeterState & { breadcrumbs: string[] }) {
   const filled = Math.min(
     RECORDING_SLOT_COUNT,
     Math.ceil((elapsedMs / MAX_RECORDING_MS) * RECORDING_SLOT_COUNT),
@@ -16,27 +17,47 @@ export default function RecordingMeter({
 
   return (
     <div className="recording-meter" aria-hidden="true">
-      <div className="recording-meter-status">
-        <span className="recording-meter-dot" />
-        <span className="recording-meter-time">
-          {Math.floor(elapsedMs / 1000)}s
-        </span>
-      </div>
-      <div className="recording-meter-tape">
-        <div className="recording-meter-wave">
-          {levels.slice(0, filled).map((level, index) => (
+      <div className="recording-meter-breadcrumbs">
+        {breadcrumbs.map((breadcrumb, index) => (
+          <span key={`${breadcrumb}-${index}`}>
+            {index > 0 ? (
+              <span className="recording-meter-separator">/</span>
+            ) : null}
             <span
-              key={index}
-              className="recording-meter-bar"
-              style={{ height: `${Math.max(4, Math.round(level * 18))}px` }}
-            />
-          ))}
+              className={
+                index === breadcrumbs.length - 1
+                  ? "recording-meter-crumb recording-meter-crumb--active"
+                  : "recording-meter-crumb"
+              }
+            >
+              {breadcrumb}
+            </span>
+          </span>
+        ))}
+      </div>
+      <div className="recording-meter-row">
+        <div className="recording-meter-status">
+          <span className="recording-meter-dot" />
+          <span className="recording-meter-time">
+            {Math.floor(elapsedMs / 1000)}s
+          </span>
         </div>
-        <span className="recording-meter-playhead" />
-        <div className="recording-meter-rest">
-          {Array.from({ length: remaining }, (_, index) => (
-            <span key={index} className="recording-meter-tick" />
-          ))}
+        <div className="recording-meter-tape">
+          <div className="recording-meter-wave">
+            {levels.slice(0, filled).map((level, index) => (
+              <span
+                key={index}
+                className="recording-meter-bar"
+                style={{ height: `${Math.max(4, Math.round(level * 18))}px` }}
+              />
+            ))}
+          </div>
+          <span className="recording-meter-playhead" />
+          <div className="recording-meter-rest">
+            {Array.from({ length: remaining }, (_, index) => (
+              <span key={index} className="recording-meter-tick" />
+            ))}
+          </div>
         </div>
       </div>
     </div>
