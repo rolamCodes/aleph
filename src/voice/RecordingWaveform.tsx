@@ -1,19 +1,24 @@
 import { useEffect, useRef } from "react";
 import { MAX_RECORDING_MS } from "./usePushToTalk";
 
-const BAR_WIDTH = 2;
-const BAR_GAP = 2;
 const BAR_COLOR = "#ffffff";
-const MIN_BAR_HEIGHT = 2;
+const MIN_BAR_HEIGHT = 1;
 const PLAYHEAD_COLOR = "#ff3b30";
 const PLAYHEAD_WIDTH = 1.5;
 const REST_COLOR = "#747474";
-const REST_SIZE = 2;
+const REST_HEIGHT = 1;
 
 // Mic hiss sits just above zero, so gate it out and rescale what is left to
 // keep speech off the ceiling.
 const NOISE_FLOOR = 0.02;
 const GAIN = 2.5;
+
+type Tape = {
+  barWidth: number;
+  height: number;
+  pitch: number;
+  width: number;
+};
 
 function peakLevel(samples: Uint8Array): number {
   let peak = 0;
@@ -37,7 +42,7 @@ function fillBar(
   height: number,
 ): void {
   context.beginPath();
-  context.roundRect(x, y, width, height, width / 2);
+  context.roundRect(x, y, width, height, Math.min(width, height) / 2);
   context.fill();
 }
 
@@ -45,28 +50,32 @@ function draw(
   context: CanvasRenderingContext2D,
   levels: number[],
   recorded: number,
-  width: number,
-  height: number,
+  tape: Tape,
 ): void {
-  const middle = height / 2;
-  const pitch = BAR_WIDTH + BAR_GAP;
-  context.clearRect(0, 0, width, height);
+  const middle = tape.height / 2;
+  context.clearRect(0, 0, tape.width, tape.height);
 
   levels.forEach((level, index) => {
-    const x = index * pitch;
+    const x = index * tape.pitch;
     if (index < recorded) {
-      const barHeight = Math.max(MIN_BAR_HEIGHT, level * height);
+      const barHeight = Math.max(MIN_BAR_HEIGHT, level * tape.height);
       context.fillStyle = BAR_COLOR;
-      fillBar(context, x, middle - barHeight / 2, BAR_WIDTH, barHeight);
+      fillBar(context, x, middle - barHeight / 2, tape.barWidth, barHeight);
       return;
     }
     context.fillStyle = REST_COLOR;
-    fillBar(context, x, middle - REST_SIZE / 2, REST_SIZE, REST_SIZE);
+    fillBar(
+      context,
+      x,
+      middle - REST_HEIGHT / 2,
+      tape.barWidth,
+      REST_HEIGHT,
+    );
   });
 
   if (recorded < levels.length) {
     context.fillStyle = PLAYHEAD_COLOR;
-    context.fillRect(recorded * pitch, 0, PLAYHEAD_WIDTH, height);
+    context.fillRect(recorded * tape.pitch, 0, PLAYHEAD_WIDTH, tape.height);
   }
 }
 
@@ -96,6 +105,15 @@ export default function RecordingWaveform({
     }
     context.scale(ratio, ratio);
 
+    // One bar plus one gap per pair of device pixels, so the tape carries as
+    // many slots as the display can draw crisply.
+    const tape: Tape = {
+      barWidth: 1 / ratio,
+      height,
+      pitch: 2 / ratio,
+      width,
+    };
+
     const audioContext = new AudioContext();
     const analyser = audioContext.createAnalyser();
     analyser.fftSize = 1024;
@@ -103,7 +121,7 @@ export default function RecordingWaveform({
     source.connect(analyser);
     void audioContext.resume();
 
-    const slotCount = Math.max(1, Math.floor(width / (BAR_WIDTH + BAR_GAP)));
+    const slotCount = Math.max(1, Math.floor(width / tape.pitch));
     const levels = Array.from({ length: slotCount }, () => 0);
     const samples = new Uint8Array(analyser.fftSize);
     const startedAt = Date.now();
@@ -120,7 +138,7 @@ export default function RecordingWaveform({
       );
       analyser.getByteTimeDomainData(samples);
       levels[slot] = Math.max(levels[slot] ?? 0, peakLevel(samples));
-      draw(context, levels, slot + 1, width, height);
+      draw(context, levels, slot + 1, tape);
       frame = requestAnimationFrame(render);
     };
 
