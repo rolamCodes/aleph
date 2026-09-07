@@ -14,6 +14,59 @@ body {
   font-family: system-ui, sans-serif;
 }
 
+.app-shell {
+  height: 100%;
+  position: relative;
+}
+
+.app-state,
+.sign-in {
+  align-items: center;
+  display: flex;
+  height: 100%;
+  justify-content: center;
+}
+
+.sign-in {
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sign-in h1,
+.sign-in p {
+  margin: 0;
+}
+
+.sign-in button {
+  background: #ffffff;
+  border: 0;
+  border-radius: 8px;
+  color: #020303;
+  cursor: pointer;
+  font: inherit;
+  margin-top: 12px;
+  padding: 10px 16px;
+}
+
+.account-control {
+  position: fixed;
+  right: 16px;
+  top: 16px;
+  z-index: 10001;
+}
+
+.save-error {
+  background: #3c1111;
+  border: 1px solid #ff5f57;
+  border-radius: 6px;
+  bottom: 16px;
+  color: #ffffff;
+  padding: 8px 12px;
+  position: fixed;
+  right: 16px;
+  z-index: 10001;
+}
+
 .canvas {
   height: 100%;
   position: relative;
