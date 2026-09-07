@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LiveAudioVisualizer } from "react-audio-visualize";
+import LiveAudioVisualizer from "./LiveAudioVisualizer";
 import { MAX_RECORDING_MS } from "./usePushToTalk";
 
 export default function RecordingMeter({
