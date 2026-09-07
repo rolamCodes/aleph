@@ -100,20 +100,31 @@ body {
   inherits: false;
 }
 
-.reticle--listening::before {
-  animation: reticle-glow-spin 1.2s linear infinite;
+.reticle--listening {
+  --reticle-glow: #3b9eff;
+  --reticle-glow-hot: #9fd2ff;
+}
+
+.reticle--processing {
+  --reticle-glow: #f3bd42;
+  --reticle-glow-hot: #ffe08a;
+  border-color: #f3bd42;
+}
+
+.reticle--listening::before,
+.reticle--processing::before {
   background: conic-gradient(
     from var(--reticle-angle),
     transparent 0 68%,
-    rgb(59 158 255 / 0%) 68%,
-    #3b9eff 88%,
-    #9fd2ff 96%,
-    #3b9eff
+    color-mix(in srgb, var(--reticle-glow) 0%, transparent) 68%,
+    var(--reticle-glow) 88%,
+    var(--reticle-glow-hot) 96%,
+    var(--reticle-glow)
   );
   border-radius: 7px;
   box-sizing: border-box;
   content: "";
-  filter: drop-shadow(0 0 6px #3b9eff);
+  filter: drop-shadow(0 0 6px var(--reticle-glow));
   inset: -3px;
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
@@ -128,33 +139,17 @@ body {
   position: absolute;
 }
 
+.reticle--listening::before {
+  animation: reticle-glow-spin 2.4s linear infinite;
+}
+
+.reticle--processing::before {
+  animation: reticle-glow-spin 700ms linear infinite;
+}
+
 @keyframes reticle-glow-spin {
   to {
     --reticle-angle: 360deg;
-  }
-}
-
-.reticle--processing {
-  border-color: #f3bd42;
-}
-
-.reticle--processing::after {
-  animation: reticle-spin 700ms linear infinite;
-  border: 2px solid rgb(243 189 66 / 30%);
-  border-radius: 50%;
-  border-top-color: #f3bd42;
-  box-sizing: border-box;
-  content: "";
-  height: 11px;
-  position: absolute;
-  right: -18px;
-  top: -1px;
-  width: 11px;
-}
-
-@keyframes reticle-spin {
-  to {
-    transform: rotate(360deg);
   }
 }
 
