@@ -378,8 +378,7 @@ export default function Canvas() {
             edges,
             voice.recordingTarget,
           )}
-          elapsedMs={voice.meter.elapsedMs}
-          levels={voice.meter.levels}
+          mediaRecorder={voice.mediaRecorder}
         />
       ) : null}
     </div>

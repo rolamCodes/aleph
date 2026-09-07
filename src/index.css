@@ -369,34 +369,7 @@ body {
 .recording-meter-tape {
   align-items: center;
   display: flex;
-  gap: 8px;
-}
-
-.recording-meter-wave,
-.recording-meter-rest {
-  align-items: center;
-  display: flex;
-  gap: 3px;
-  height: 18px;
-}
-
-.recording-meter-bar {
-  background: #ffffff;
-  border-radius: 1px;
-  display: block;
-  width: 2px;
-}
-
-.recording-meter-playhead {
-  background: #ff3b30;
-  height: 18px;
-  width: 1.5px;
-}
-
-.recording-meter-tick {
-  background: #747474;
-  border-radius: 50%;
-  display: block;
-  height: 4px;
-  width: 4px;
+  height: 24px;
+  justify-content: flex-end;
+  overflow: hidden;
 }

@@ -1,19 +1,27 @@
-import {
-  MAX_RECORDING_MS,
-  RECORDING_SLOT_COUNT,
-  type RecordingMeterState,
-} from "./usePushToTalk";
+import { useEffect, useState } from "react";
+import { LiveAudioVisualizer } from "react-audio-visualize";
+import { MAX_RECORDING_MS } from "./usePushToTalk";
 
 export default function RecordingMeter({
   breadcrumbs,
-  elapsedMs,
-  levels,
-}: RecordingMeterState & { breadcrumbs: string[] }) {
-  const filled = Math.min(
-    RECORDING_SLOT_COUNT,
-    Math.ceil((elapsedMs / MAX_RECORDING_MS) * RECORDING_SLOT_COUNT),
-  );
-  const remaining = RECORDING_SLOT_COUNT - filled;
+  mediaRecorder,
+}: {
+  breadcrumbs: string[];
+  mediaRecorder: MediaRecorder | null;
+}) {
+  const [elapsedMs, setElapsedMs] = useState(0);
+
+  useEffect(() => {
+    const startedAt = Date.now();
+    const tick = (): void => {
+      setElapsedMs(Math.min(MAX_RECORDING_MS, Date.now() - startedAt));
+    };
+    tick();
+    const interval = window.setInterval(tick, 250);
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, []);
 
   return (
     <div className="recording-meter" aria-hidden="true">
@@ -43,21 +51,19 @@ export default function RecordingMeter({
           </span>
         </div>
         <div className="recording-meter-tape">
-          <div className="recording-meter-wave">
-            {levels.slice(0, filled).map((level, index) => (
-              <span
-                key={index}
-                className="recording-meter-bar"
-                style={{ height: `${Math.max(4, Math.round(level * 18))}px` }}
-              />
-            ))}
-          </div>
-          <span className="recording-meter-playhead" />
-          <div className="recording-meter-rest">
-            {Array.from({ length: remaining }, (_, index) => (
-              <span key={index} className="recording-meter-tick" />
-            ))}
-          </div>
+          {mediaRecorder ? (
+            <LiveAudioVisualizer
+              mediaRecorder={mediaRecorder}
+              width={260}
+              height={24}
+              barWidth={2}
+              gap={2}
+              barColor="#ffffff"
+              backgroundColor="transparent"
+              fftSize={128}
+              smoothingTimeConstant={0.5}
+            />
+          ) : null}
         </div>
       </div>
     </div>
