@@ -345,6 +345,9 @@ export default function Canvas() {
   return (
     <div className="canvas">
       <ReactFlow
+        proOptions={{
+          hideAttribution: true,
+        }}
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
