@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import LiveAudioVisualizer from "./LiveAudioVisualizer";
+import RecordingWaveform from "./RecordingWaveform";
 import { MAX_RECORDING_MS } from "./usePushToTalk";
 
 export default function RecordingMeter({
@@ -54,16 +54,10 @@ export default function RecordingMeter({
         </div>
         <div className="recording-meter-tape">
           {mediaRecorder ? (
-            <LiveAudioVisualizer
+            <RecordingWaveform
               mediaRecorder={mediaRecorder}
               width={260}
               height={24}
-              barWidth={2}
-              gap={2}
-              barColor="#ffffff"
-              backgroundColor="transparent"
-              fftSize={128}
-              smoothingTimeConstant={0.5}
             />
           ) : null}
         </div>
