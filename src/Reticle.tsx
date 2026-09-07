@@ -250,7 +250,7 @@ export default function Reticle({
   return (
     <div
       ref={elRef}
-      className={`reticle reticle--${status}`}
+      className={`reticle reticle--${status === "listening" ? "idle" : status}`}
       aria-hidden="true"
     />
   );

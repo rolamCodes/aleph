@@ -1,18 +1,27 @@
 import { useEffect, useRef, useState } from "react";
 import type { PointedTarget, VoiceStatus } from "../types";
 
-const MAX_RECORDING_MS = 30_000;
+export const MAX_RECORDING_MS = 30_000;
+export const RECORDING_SLOT_COUNT = 24;
 const BUFFER_SIZE = 4096;
 
 type ActiveCapture = {
   audioContext: AudioContext;
   chunks: Float32Array[];
+  levels: number[];
   processor: ScriptProcessorNode;
+  raf: number;
   silentGain: GainNode;
   source: MediaStreamAudioSourceNode;
+  startedAt: number;
   stream: MediaStream;
   target: PointedTarget;
   timeout: ReturnType<typeof setTimeout>;
+};
+
+export type RecordingMeterState = {
+  elapsedMs: number;
+  levels: number[];
 };
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -70,7 +79,23 @@ function encodeWav(chunks: Float32Array[], sampleRate: number): Blob | null {
   return new Blob([buffer], { type: "audio/wav" });
 }
 
+function rms(samples: Float32Array): number {
+  let sum = 0;
+  for (const sample of samples) {
+    sum += sample * sample;
+  }
+  return Math.sqrt(sum / samples.length);
+}
+
+function emptyMeter(): RecordingMeterState {
+  return {
+    elapsedMs: 0,
+    levels: Array.from({ length: RECORDING_SLOT_COUNT }, () => 0),
+  };
+}
+
 function releaseCapture(capture: ActiveCapture): void {
+  cancelAnimationFrame(capture.raf);
   clearTimeout(capture.timeout);
   capture.processor.onaudioprocess = null;
   capture.source.disconnect();
@@ -88,9 +113,14 @@ export function usePushToTalk({
 }: {
   pointedTarget: PointedTarget;
   onRecording: (audio: Blob, target: PointedTarget) => Promise<void>;
-}): { error: string | null; status: VoiceStatus } {
+}): {
+  error: string | null;
+  meter: RecordingMeterState;
+  status: VoiceStatus;
+} {
   const [status, setStatus] = useState<VoiceStatus>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [meter, setMeter] = useState<RecordingMeterState>(emptyMeter);
   const activeRef = useRef<ActiveCapture | null>(null);
   const mountedRef = useRef(true);
   const onRecordingRef = useRef(onRecording);
@@ -122,6 +152,7 @@ export function usePushToTalk({
       if (active) {
         releaseCapture(active);
       }
+      setMeter(emptyMeter());
       updateStatus("idle");
     };
 
@@ -129,6 +160,7 @@ export function usePushToTalk({
       const message =
         reason instanceof Error ? reason.message : "Voice command failed";
       setError(message);
+      setMeter(emptyMeter());
       updateStatus("error");
     };
 
@@ -142,6 +174,7 @@ export function usePushToTalk({
       const sampleRate = active.audioContext.sampleRate;
       releaseCapture(active);
       const audio = encodeWav(active.chunks, sampleRate);
+      setMeter(emptyMeter());
       if (!audio) {
         updateStatus("idle");
         return;
@@ -201,10 +234,20 @@ export function usePushToTalk({
         const processor = audioContext.createScriptProcessor(BUFFER_SIZE, 1, 1);
         const silentGain = audioContext.createGain();
         const chunks: Float32Array[] = [];
+        const levels = emptyMeter().levels;
+        const startedAt = Date.now();
+        const slotMs = MAX_RECORDING_MS / RECORDING_SLOT_COUNT;
 
         silentGain.gain.value = 0;
         processor.onaudioprocess = (event) => {
-          chunks.push(new Float32Array(event.inputBuffer.getChannelData(0)));
+          const samples = new Float32Array(event.inputBuffer.getChannelData(0));
+          chunks.push(samples);
+          const slot = Math.min(
+            RECORDING_SLOT_COUNT - 1,
+            Math.floor((Date.now() - startedAt) / slotMs),
+          );
+          const current = levels[slot] ?? 0;
+          levels[slot] = Math.max(current, Math.min(1, rms(samples) * 4));
         };
         source.connect(processor);
         processor.connect(silentGain);
@@ -215,16 +258,32 @@ export function usePushToTalk({
           void finish();
         }, MAX_RECORDING_MS);
 
+        const tick = (): void => {
+          const capture = activeRef.current;
+          if (!capture || !mountedRef.current) {
+            return;
+          }
+          setMeter({
+            elapsedMs: Math.min(MAX_RECORDING_MS, Date.now() - capture.startedAt),
+            levels: [...capture.levels],
+          });
+          capture.raf = requestAnimationFrame(tick);
+        };
+
         activeRef.current = {
           audioContext,
           chunks,
+          levels,
           processor,
+          raf: requestAnimationFrame(tick),
           silentGain,
           source,
+          startedAt,
           stream,
           target,
           timeout,
         };
+        setMeter({ elapsedMs: 0, levels: [...levels] });
         updateStatus("listening");
       } catch (reason) {
         fail(reason);
@@ -279,5 +338,5 @@ export function usePushToTalk({
     };
   }, []);
 
-  return { error, status };
+  return { error, meter, status };
 }

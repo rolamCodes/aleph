@@ -64,10 +64,6 @@ body {
   }
 }
 
-.reticle--listening {
-  border-color: #4ade80;
-}
-
 .reticle--error {
   border-color: #ff5f57;
 }
@@ -306,4 +302,75 @@ body {
   flex: 1;
   font-size: 20px;
   line-height: 24px;
+}
+
+.recording-meter {
+  align-items: center;
+  background: #1b1b1b;
+  border: 2px solid #292929;
+  border-radius: 25px;
+  bottom: 20px;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: space-between;
+  left: 20px;
+  padding: 12px 20px;
+  pointer-events: none;
+  position: absolute;
+  right: 20px;
+  z-index: 20;
+}
+
+.recording-meter-status {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.recording-meter-dot {
+  background: #ff3b30;
+  border-radius: 50%;
+  height: 10px;
+  width: 10px;
+}
+
+.recording-meter-time {
+  color: #ffffff;
+  font-size: 20px;
+  line-height: 24px;
+}
+
+.recording-meter-tape {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.recording-meter-wave,
+.recording-meter-rest {
+  align-items: center;
+  display: flex;
+  gap: 3px;
+  height: 18px;
+}
+
+.recording-meter-bar {
+  background: #ffffff;
+  border-radius: 1px;
+  display: block;
+  width: 2px;
+}
+
+.recording-meter-playhead {
+  background: #ff3b30;
+  height: 18px;
+  width: 1.5px;
+}
+
+.recording-meter-tick {
+  background: #747474;
+  border-radius: 50%;
+  display: block;
+  height: 4px;
+  width: 4px;
 }

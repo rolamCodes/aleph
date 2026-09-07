@@ -19,6 +19,7 @@ import type {
   PointedTarget,
 } from "./types";
 import { runVoiceCommand } from "./voice/gemini";
+import RecordingMeter from "./voice/RecordingMeter";
 import { usePushToTalk } from "./voice/usePushToTalk";
 
 const nodeTypes = {
@@ -297,6 +298,9 @@ export default function Canvas() {
         onTargetChange={setPointedTarget}
         status={voice.status}
       />
+      {voice.status === "listening" ? (
+        <RecordingMeter elapsedMs={voice.meter.elapsedMs} levels={voice.meter.levels} />
+      ) : null}
     </div>
   );
 }
