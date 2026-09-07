@@ -6,6 +6,22 @@ export type ElementKind = "text" | "button" | "input" | "image";
 
 export type InteractionType = string;
 
+export type PointedTarget =
+  | { kind: "context"; id: string }
+  | {
+      kind: "component" | "element";
+      id: string;
+      contextId: string;
+    }
+  | { kind: "edge"; id: string }
+  | { kind: "canvas" };
+
+export type VoiceStatus =
+  | "idle"
+  | "listening"
+  | "processing"
+  | "error";
+
 export type UIElement = {
   id: string;
   kind: ElementKind;

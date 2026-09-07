@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   addEdge,
   Background,
@@ -7,6 +7,7 @@ import {
   useNodesState,
   type Connection,
   type NodeTypes,
+  type ReactFlowInstance,
 } from "@xyflow/react";
 import ContextNode from "./ContextNode";
 import type { EdgeTypes } from "@xyflow/react";
@@ -15,7 +16,11 @@ import Reticle from "./Reticle";
 import type {
   ContextNode as ContextNodeType,
   InteractionEdge as InteractionEdgeType,
+  PointedTarget,
 } from "./types";
+import { runVoiceCommand } from "./voice/gemini";
+import RecordingMeter from "./voice/RecordingMeter";
+import { usePushToTalk } from "./voice/usePushToTalk";
 
 const nodeTypes = {
   context: ContextNode,
@@ -185,9 +190,94 @@ function isValidInteraction(
   return sourceHandle.startsWith("exit:") && targetHandle === "entry";
 }
 
+function elementBreadcrumbs(
+  node: ContextNodeType,
+  elementId: string,
+): string[] {
+  for (const item of node.data.items) {
+    if (item.type === "element" && item.id === elementId) {
+      return [item.label];
+    }
+    if (item.type === "component") {
+      const element = item.elements.find(
+        (candidate) => candidate.id === elementId,
+      );
+      if (element) {
+        return [item.name, element.label];
+      }
+    }
+  }
+  return [];
+}
+
+function recordingBreadcrumbs(
+  nodes: ContextNodeType[],
+  edges: InteractionEdgeType[],
+  target: PointedTarget | null,
+): string[] {
+  if (!target || target.kind === "canvas") {
+    return ["Tree"];
+  }
+
+  if (target.kind === "edge") {
+    const edge = edges.find((candidate) => candidate.id === target.id);
+    if (!edge) {
+      return ["Tree"];
+    }
+    const source = nodes.find((node) => node.id === edge.source);
+    const destination = nodes.find((node) => node.id === edge.target);
+    const elementId = (edge.sourceHandle ?? "").replace(/^exit:/, "");
+    return [
+      "Tree",
+      ...(source ? [source.data.name, ...elementBreadcrumbs(source, elementId)] : []),
+      ...(destination ? [destination.data.name] : []),
+    ];
+  }
+
+  const contextId =
+    target.kind === "context" ? target.id : target.contextId;
+  const context = nodes.find((node) => node.id === contextId);
+  if (!context) {
+    return ["Tree"];
+  }
+  if (target.kind === "context") {
+    return ["Tree", context.data.name];
+  }
+  if (target.kind === "component") {
+    const component = context.data.items.find(
+      (item) => item.type === "component" && item.id === target.id,
+    );
+    return [
+      "Tree",
+      context.data.name,
+      ...(component?.type === "component" ? [component.name] : []),
+    ];
+  }
+  return [
+    "Tree",
+    context.data.name,
+    ...elementBreadcrumbs(context, target.id),
+  ];
+}
+
 export default function Canvas() {
-  const [nodes, , onNodesChange] = useNodesState(initialNodes);
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [pointedTarget, setPointedTarget] = useState<PointedTarget>({
+    kind: "canvas",
+  });
+  const [processingTarget, setProcessingTarget] = useState<PointedTarget>({
+    kind: "canvas",
+  });
+  const edgesRef = useRef(edges);
+  const instanceRef =
+    useRef<ReactFlowInstance<ContextNodeType, InteractionEdgeType>>(null);
+  const nodesRef = useRef(nodes);
+
+  useEffect(() => {
+    edgesRef.current = edges;
+    nodesRef.current = nodes;
+  }, [edges, nodes]);
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -210,6 +300,48 @@ export default function Canvas() {
     [setEdges],
   );
 
+  const onRecording = useCallback(
+    async (audio: Blob, target: PointedTarget): Promise<void> => {
+      setProcessingTarget(target);
+      const pointedContextId =
+        target.kind === "context"
+          ? target.id
+          : target.kind === "component" || target.kind === "element"
+            ? target.contextId
+            : target.kind === "edge"
+              ? edgesRef.current.find((edge) => edge.id === target.id)?.target
+              : undefined;
+      const defaultPosition =
+        instanceRef.current?.screenToFlowPosition({
+          x: window.innerWidth / 2,
+          y: window.innerHeight / 2,
+        }) ?? { x: 200, y: 200 };
+
+      await runVoiceCommand({
+        audio,
+        target,
+        initialGraph: {
+          nodes: nodesRef.current,
+          edges: edgesRef.current,
+        },
+        layout: {
+          defaultAnchorContextId: pointedContextId,
+          defaultPosition,
+        },
+        onMutation: (graph, mutationTarget) => {
+          nodesRef.current = graph.nodes;
+          edgesRef.current = graph.edges;
+          setProcessingTarget(mutationTarget);
+          setNodes(graph.nodes);
+          setEdges(graph.edges);
+        },
+      });
+    },
+    [setEdges, setNodes],
+  );
+
+  const voice = usePushToTalk({ pointedTarget, onRecording });
+
   return (
     <div className="canvas">
       <ReactFlow
@@ -222,10 +354,31 @@ export default function Canvas() {
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
+        onInit={(instance) => {
+          instanceRef.current = instance;
+        }}
+        panActivationKeyCode={null}
       >
         <Background color="#303435" gap={20} size={2} />
       </ReactFlow>
-      <Reticle />
+      <Reticle
+        focusTarget={
+          voice.status === "processing" ? processingTarget : undefined
+        }
+        onTargetChange={setPointedTarget}
+        status={voice.status}
+      />
+      {voice.status === "listening" ? (
+        <RecordingMeter
+          breadcrumbs={recordingBreadcrumbs(
+            nodes,
+            edges,
+            voice.recordingTarget,
+          )}
+          elapsedMs={voice.meter.elapsedMs}
+          levels={voice.meter.levels}
+        />
+      ) : null}
     </div>
   );
 }

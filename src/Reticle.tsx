@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import type { PointedTarget, VoiceStatus } from "./types";
 
 const IDLE_SIZE = 8;
 const CURSOR_OFFSET = 12;
@@ -64,10 +65,72 @@ function stillAttached(target: Element, x: number, y: number): boolean {
   );
 }
 
-export default function Reticle() {
+function pointedTargetFromElement(element: Element): PointedTarget {
+  const reticleTarget = element.closest<HTMLElement>("[data-reticle-kind]");
+  const kind = reticleTarget?.dataset.reticleKind;
+  const id = reticleTarget?.dataset.reticleId;
+
+  if (kind === "context" && id) {
+    return { kind, id };
+  }
+
+  const contextId = reticleTarget?.dataset.reticleContextId;
+  if ((kind === "component" || kind === "element") && id && contextId) {
+    return { kind, id, contextId };
+  }
+
+  const edge = element.closest<HTMLElement>(".react-flow__edge");
+  const edgeId = edge?.dataset.id;
+  return edgeId ? { kind: "edge", id: edgeId } : { kind: "canvas" };
+}
+
+function targetKey(target: PointedTarget): string {
+  return target.kind === "canvas" ? target.kind : `${target.kind}:${target.id}`;
+}
+
+function elementForTarget(target: PointedTarget): Element | null {
+  if (target.kind === "canvas") {
+    return null;
+  }
+  if (target.kind === "edge") {
+    for (const edge of document.querySelectorAll<HTMLElement>(
+      ".react-flow__edge",
+    )) {
+      if (edge.dataset.id === target.id) {
+        return edge;
+      }
+    }
+    return null;
+  }
+
+  for (const element of document.querySelectorAll<HTMLElement>(
+    "[data-reticle-kind]",
+  )) {
+    if (
+      element.dataset.reticleKind === target.kind &&
+      element.dataset.reticleId === target.id &&
+      (target.kind === "context" ||
+        element.dataset.reticleContextId === target.contextId)
+    ) {
+      return element;
+    }
+  }
+  return null;
+}
+
+export default function Reticle({
+  focusTarget,
+  onTargetChange,
+  status,
+}: {
+  focusTarget?: PointedTarget;
+  onTargetChange: (target: PointedTarget) => void;
+  status: VoiceStatus;
+}) {
   const elRef = useRef<HTMLDivElement>(null);
   const attachedRef = useRef<Element | null>(null);
   const pointerRef = useRef({ x: 0, y: 0, inside: false });
+  const targetKeyRef = useRef("canvas");
 
   useEffect(() => {
     const node = elRef.current;
@@ -91,10 +154,37 @@ export default function Reticle() {
       node.style.top = `${box.top}px`;
     };
 
+    const reportTarget = (target: PointedTarget) => {
+      const key = targetKey(target);
+      if (key !== targetKeyRef.current) {
+        targetKeyRef.current = key;
+        onTargetChange(target);
+      }
+    };
+
     const update = () => {
       const { x, y, inside } = pointerRef.current;
+      if (status === "processing") {
+        const focused =
+          focusTarget && focusTarget.kind !== "canvas"
+            ? elementForTarget(focusTarget)
+            : null;
+        const processingElement =
+          focused ??
+          (attachedRef.current && document.contains(attachedRef.current)
+            ? attachedRef.current
+            : null);
+        if (processingElement) {
+          node.style.opacity = "1";
+          attachedRef.current = processingElement;
+          applySnap(boxFromElement(processingElement));
+          return;
+        }
+      }
+
       if (!inside) {
         node.style.opacity = "0";
+        reportTarget({ kind: "canvas" });
         return;
       }
 
@@ -104,17 +194,20 @@ export default function Reticle() {
       if (hit) {
         attachedRef.current = hit;
         applySnap(boxFromElement(hit));
+        reportTarget(pointedTargetFromElement(hit));
         return;
       }
 
       const attached = attachedRef.current;
       if (attached && stillAttached(attached, x, y)) {
         applySnap(boxFromElement(attached));
+        reportTarget(pointedTargetFromElement(attached));
         return;
       }
 
       attachedRef.current = null;
       applyIdle(x, y);
+      reportTarget({ kind: "canvas" });
     };
 
     const onMove = (event: PointerEvent) => {
@@ -134,7 +227,10 @@ export default function Reticle() {
 
     let raf = 0;
     const loop = () => {
-      if (attachedRef.current && pointerRef.current.inside) {
+      if (
+        status === "processing" ||
+        (attachedRef.current && pointerRef.current.inside)
+      ) {
         update();
       }
       raf = requestAnimationFrame(loop);
@@ -149,7 +245,13 @@ export default function Reticle() {
       document.documentElement.removeEventListener("pointerleave", onLeave);
       cancelAnimationFrame(raf);
     };
-  }, []);
+  }, [focusTarget, onTargetChange, status]);
 
-  return <div ref={elRef} className="reticle" aria-hidden="true" />;
+  return (
+    <div
+      ref={elRef}
+      className={`reticle reticle--${status === "listening" ? "idle" : status}`}
+      aria-hidden="true"
+    />
+  );
 }
