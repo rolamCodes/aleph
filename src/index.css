@@ -319,7 +319,7 @@ body {
   pointer-events: none;
   position: absolute;
   transform: translateX(-50%);
-  width: 280px;
+  width: 380px;
   z-index: 1000;
 }
 
