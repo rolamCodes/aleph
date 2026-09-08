@@ -254,14 +254,8 @@ export default function Reticle({
     <BorderBeam
       ref={elRef}
       active={active}
-      borderRadius={4}
       className={`reticle reticle--${status}`}
-      colorVariant="mono"
-      duration={status === "listening" ? 3.2 : 0.9}
-      size="sm"
-      staticColors
-      strength={0.9}
-      theme="dark"
+      colorVariant={status === "processing" ? "sunset" : "ocean"}
       aria-hidden="true"
     >
       <div className="reticle__border" />

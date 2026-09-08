@@ -110,19 +110,6 @@ body {
   color: #f3bd42;
 }
 
-.reticle[data-active]::after,
-.reticle[data-active]::before,
-.reticle[data-fading]::after,
-.reticle[data-fading]::before,
-.reticle[data-beam] [data-beam-bloom] {
-  background: currentColor !important;
-}
-
-.reticle[data-active]::before,
-.reticle[data-fading]::before {
-  box-shadow: inset 0 0 5px 1px currentColor !important;
-}
-
 .reticle--error {
   color: #ff5f57;
 }
