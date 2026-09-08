@@ -1,5 +1,4 @@
 import { useEffect, useRef } from "react";
-import { BorderBeam } from "border-beam";
 import type { PointedTarget, VoiceStatus } from "./types";
 
 const IDLE_SIZE = 8;
@@ -248,17 +247,11 @@ export default function Reticle({
     };
   }, [focusTarget, onTargetChange, status]);
 
-  const active = status === "listening" || status === "processing";
-
   return (
-    <BorderBeam
+    <div
       ref={elRef}
-      active={active}
       className={`reticle reticle--${status}`}
-      colorVariant={status === "processing" ? "sunset" : "ocean"}
       aria-hidden="true"
-    >
-      <div className="reticle__border" />
-    </BorderBeam>
+    />
   );
 }
