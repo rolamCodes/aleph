@@ -15,6 +15,7 @@ import type { Id } from "../convex/_generated/dataModel";
 import { api } from "../convex/_generated/api";
 import ContextNode from "./ContextNode";
 import InteractionEdge from "./InteractionEdge";
+import { inferPointedTargetFromGraphChange } from "./inferPointedTarget";
 import Reticle from "./Reticle";
 import { usePushToTalk } from "./voice/usePushToTalk";
 import type {
@@ -100,10 +101,16 @@ export default function Canvas() {
   const [processingTarget, setProcessingTarget] = useState<PointedTarget>({
     kind: "canvas",
   });
+  const [reticleUnlocked, setReticleUnlocked] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const edgesRef = useRef(edges);
   const nodesRef = useRef(nodes);
   const syncedAtRef = useRef<number | null>(null);
+  const preProcessingGraphRef = useRef<{
+    nodes: ContextNodeType[];
+    edges: InteractionEdgeType[];
+  }>({ nodes: [], edges: [] });
+  const processingGraphUpdatedAtRef = useRef<number | null>(null);
   const instanceRef =
     useRef<ReactFlowInstance<ContextNodeType, InteractionEdgeType>>(null);
 
@@ -164,6 +171,16 @@ export default function Canvas() {
     async (audio: Blob, target: PointedTarget): Promise<void> => {
       if (!project) throw new Error("Project is not ready");
       setProcessingTarget(target);
+      if (target.kind === "canvas") {
+        preProcessingGraphRef.current = {
+          nodes: nodesRef.current,
+          edges: edgesRef.current,
+        };
+        processingGraphUpdatedAtRef.current = project.updatedAt;
+        setReticleUnlocked(false);
+      } else {
+        setReticleUnlocked(true);
+      }
       const pointedContextId =
         target.kind === "context"
           ? target.id
@@ -200,6 +217,33 @@ export default function Canvas() {
   );
 
   const voice = usePushToTalk({ pointedTarget, onRecording });
+
+  useEffect(() => {
+    if (voice.status !== "processing") {
+      setReticleUnlocked(false);
+      return;
+    }
+    if (reticleUnlocked || !project) {
+      return;
+    }
+    if (processingTarget.kind !== "canvas") {
+      return;
+    }
+    if (project.updatedAt === processingGraphUpdatedAtRef.current) {
+      return;
+    }
+
+    const target = inferPointedTargetFromGraphChange(
+      preProcessingGraphRef.current.nodes,
+      preProcessingGraphRef.current.edges,
+      project.nodes,
+      project.edges,
+    );
+    if (target.kind !== "canvas") {
+      setProcessingTarget(target);
+      setReticleUnlocked(true);
+    }
+  }, [processingTarget.kind, project, reticleUnlocked, voice.status]);
 
   if (project === undefined) {
     return <div className="app-state">Loading project…</div>;
@@ -260,6 +304,11 @@ export default function Canvas() {
         <Background color="#303435" gap={20} size={2} />
       </ReactFlow>
       <Reticle
+        frozen={
+          voice.status === "processing" &&
+          processingTarget.kind === "canvas" &&
+          !reticleUnlocked
+        }
         focusTarget={
           voice.status === "processing" ? processingTarget : undefined
         }

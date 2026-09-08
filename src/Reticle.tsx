@@ -121,22 +121,29 @@ function elementForTarget(target: PointedTarget): Element | null {
 
 export default function Reticle({
   focusTarget,
+  frozen = false,
   onTargetChange,
   status,
 }: {
   focusTarget?: PointedTarget;
+  frozen?: boolean;
   onTargetChange: (target: PointedTarget) => void;
   status: VoiceStatus;
 }) {
   const elRef = useRef<HTMLDivElement>(null);
   const attachedRef = useRef<Element | null>(null);
   const pointerRef = useRef({ x: 0, y: 0, inside: false });
+  const frozenPositionRef = useRef<{ x: number; y: number } | null>(null);
   const targetKeyRef = useRef("canvas");
 
   useEffect(() => {
     const node = elRef.current;
     if (!node) {
       return;
+    }
+
+    if (!frozen) {
+      frozenPositionRef.current = null;
     }
 
     const applyIdle = (x: number, y: number) => {
@@ -169,6 +176,15 @@ export default function Reticle({
 
     const update = () => {
       const { x, y, inside } = pointerRef.current;
+      if (status === "processing" && frozen) {
+        if (!frozenPositionRef.current) {
+          frozenPositionRef.current = { x, y };
+        }
+        node.style.opacity = inside ? "1" : "0";
+        applyIdle(frozenPositionRef.current.x, frozenPositionRef.current.y);
+        return;
+      }
+
       if (status === "processing") {
         const focused =
           focusTarget && focusTarget.kind !== "canvas"
@@ -234,6 +250,7 @@ export default function Reticle({
     const loop = () => {
       if (
         status === "processing" ||
+        frozen ||
         (attachedRef.current && pointerRef.current.inside)
       ) {
         update();
@@ -251,7 +268,7 @@ export default function Reticle({
       document.documentElement.removeEventListener("pointerleave", onLeave);
       cancelAnimationFrame(raf);
     };
-  }, [focusTarget, onTargetChange, status]);
+  }, [focusTarget, frozen, onTargetChange, status]);
 
   return (
     <div
