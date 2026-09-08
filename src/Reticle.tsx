@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import type { PointedTarget, VoiceStatus } from "./types";
 
 const IDLE_SIZE = 8;
+const ACTIVE_IDLE_SIZE = IDLE_SIZE * 3;
 const CURSOR_OFFSET = 12;
 const ATTACHMENT_RADIUS = 80;
 const PADDING = 2;
@@ -139,15 +140,19 @@ export default function Reticle({
     }
 
     const applyIdle = (x: number, y: number) => {
+      const active = status === "listening" || status === "processing";
+      const size = active ? ACTIVE_IDLE_SIZE : IDLE_SIZE;
       node.classList.remove("reticle--snapped");
-      node.style.width = `${IDLE_SIZE}px`;
-      node.style.height = `${IDLE_SIZE}px`;
-      node.style.left = `${x - CURSOR_OFFSET - IDLE_SIZE}px`;
-      node.style.top = `${y - CURSOR_OFFSET - IDLE_SIZE}px`;
+      node.classList.toggle("reticle--active-idle", active);
+      node.style.width = `${size}px`;
+      node.style.height = `${size}px`;
+      node.style.left = `${x - CURSOR_OFFSET - size}px`;
+      node.style.top = `${y - CURSOR_OFFSET - size}px`;
     };
 
     const applySnap = (box: Box) => {
       node.classList.add("reticle--snapped");
+      node.classList.remove("reticle--active-idle");
       node.style.width = `${box.width}px`;
       node.style.height = `${box.height}px`;
       node.style.left = `${box.left}px`;
@@ -238,6 +243,7 @@ export default function Reticle({
 
     window.addEventListener("pointermove", onMove);
     document.documentElement.addEventListener("pointerleave", onLeave);
+    update();
     raf = requestAnimationFrame(loop);
 
     return () => {
@@ -250,7 +256,7 @@ export default function Reticle({
   return (
     <div
       ref={elRef}
-      className={`reticle reticle--${status === "listening" ? "idle" : status}`}
+      className={`reticle reticle--${status}`}
       aria-hidden="true"
     />
   );

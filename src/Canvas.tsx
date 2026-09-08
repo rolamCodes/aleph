@@ -16,7 +16,6 @@ import { api } from "../convex/_generated/api";
 import ContextNode from "./ContextNode";
 import InteractionEdge from "./InteractionEdge";
 import Reticle from "./Reticle";
-import RecordingMeter from "./voice/RecordingMeter";
 import { usePushToTalk } from "./voice/usePushToTalk";
 import type {
   ContextNode as ContextNodeType,
@@ -72,66 +71,6 @@ function serializeEdges(edges: InteractionEdgeType[]) {
       interaction: edge.data?.interaction ?? String(edge.label ?? "click"),
     },
   }));
-}
-
-function elementBreadcrumbs(
-  node: ContextNodeType,
-  elementId: string,
-): string[] {
-  for (const item of node.data.items) {
-    if (item.type === "element" && item.id === elementId) {
-      return [item.label];
-    }
-    if (item.type === "component") {
-      const element = item.elements.find(
-        (candidate) => candidate.id === elementId,
-      );
-      if (element) return [item.name, element.label];
-    }
-  }
-  return [];
-}
-
-function recordingBreadcrumbs(
-  nodes: ContextNodeType[],
-  edges: InteractionEdgeType[],
-  target: PointedTarget | null,
-): string[] {
-  if (!target || target.kind === "canvas") return ["Tree"];
-  if (target.kind === "edge") {
-    const edge = edges.find((candidate) => candidate.id === target.id);
-    if (!edge) return ["Tree"];
-    const source = nodes.find((node) => node.id === edge.source);
-    const destination = nodes.find((node) => node.id === edge.target);
-    const elementId = (edge.sourceHandle ?? "").replace(/^exit:/, "");
-    return [
-      "Tree",
-      ...(source
-        ? [source.data.name, ...elementBreadcrumbs(source, elementId)]
-        : []),
-      ...(destination ? [destination.data.name] : []),
-    ];
-  }
-  const contextId =
-    target.kind === "context" ? target.id : target.contextId;
-  const context = nodes.find((node) => node.id === contextId);
-  if (!context) return ["Tree"];
-  if (target.kind === "context") return ["Tree", context.data.name];
-  if (target.kind === "component") {
-    const component = context.data.items.find(
-      (item) => item.type === "component" && item.id === target.id,
-    );
-    return [
-      "Tree",
-      context.data.name,
-      ...(component?.type === "component" ? [component.name] : []),
-    ];
-  }
-  return [
-    "Tree",
-    context.data.name,
-    ...elementBreadcrumbs(context, target.id),
-  ];
 }
 
 function parseStorageId(value: unknown): Id<"_storage"> {
@@ -327,17 +266,6 @@ export default function Canvas() {
         onTargetChange={setPointedTarget}
         status={voice.status}
       />
-      {voice.status === "listening" ? (
-        <RecordingMeter
-          breadcrumbs={recordingBreadcrumbs(
-            nodes,
-            edges,
-            voice.recordingTarget,
-          )}
-          elapsedMs={voice.meter.elapsedMs}
-          levels={voice.meter.levels}
-        />
-      ) : null}
       {saveError ? <div className="save-error">{saveError}</div> : null}
     </div>
   );
