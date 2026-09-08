@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { PointedTarget, VoiceStatus } from "./types";
 
-const IDLE_SIZE = 8;
+const IDLE_SIZE = 24;
 const CURSOR_OFFSET = 12;
 const ATTACHMENT_RADIUS = 80;
 const PADDING = 2;
