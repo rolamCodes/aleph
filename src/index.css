@@ -77,9 +77,9 @@ body {
 .reticle {
   background: transparent;
   border: 1.5px solid #3b9eff;
-  border-radius: 50%;
+  border-radius: 4px;
   box-sizing: border-box;
-  height: 24px;
+  height: 8px;
   left: 0;
   opacity: 0;
   pointer-events: none;
@@ -91,12 +91,12 @@ body {
     width 180ms ease,
     height 180ms ease,
     border-radius 180ms ease;
-  width: 24px;
+  width: 8px;
   z-index: 10000;
 }
 
-.reticle--snapped {
-  border-radius: 4px;
+.reticle--active-idle {
+  border-radius: 50%;
 }
 
 @property --reticle-angle {
@@ -124,7 +124,7 @@ body {
       var(--reticle-glow) 88%,
       var(--reticle-glow-hot) 96%,
       var(--reticle-glow));
-  border-radius: 50%;
+  border-radius: 3px;
   box-sizing: border-box;
   content: "";
   filter: drop-shadow(0 0 32px var(--reticle-glow));
@@ -142,9 +142,9 @@ body {
   position: absolute;
 }
 
-.reticle--snapped.reticle--listening::before,
-.reticle--snapped.reticle--processing::before {
-  border-radius: 3px;
+.reticle--active-idle.reticle--listening::before,
+.reticle--active-idle.reticle--processing::before {
+  border-radius: 50%;
 }
 
 .reticle--listening::before {
