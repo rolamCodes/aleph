@@ -113,19 +113,17 @@ body {
 
 .reticle--listening::before,
 .reticle--processing::before {
-  background: conic-gradient(
-    from var(--reticle-angle),
-    transparent 0 68%,
-    color-mix(in srgb, var(--reticle-glow) 0%, transparent) 68%,
-    var(--reticle-glow) 88%,
-    var(--reticle-glow-hot) 96%,
-    var(--reticle-glow)
-  );
-  border-radius: 7px;
+  background: conic-gradient(from var(--reticle-angle),
+      transparent 0 68%,
+      color-mix(in srgb, var(--reticle-glow) 0%, transparent) 68%,
+      var(--reticle-glow) 88%,
+      var(--reticle-glow-hot) 96%,
+      var(--reticle-glow));
+  border-radius: 3px;
   box-sizing: border-box;
   content: "";
-  filter: drop-shadow(0 0 6px var(--reticle-glow));
-  inset: -3px;
+  filter: drop-shadow(0 0 32px var(--reticle-glow));
+  inset: -2px;
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
@@ -134,17 +132,17 @@ body {
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   mask-composite: exclude;
-  padding: 2px;
+  padding: 8px;
   pointer-events: none;
   position: absolute;
 }
 
 .reticle--listening::before {
-  animation: reticle-glow-spin 2.4s linear infinite;
+  animation: reticle-glow-spin 5000ms ease-in-out infinite;
 }
 
 .reticle--processing::before {
-  animation: reticle-glow-spin 700ms linear infinite;
+  animation: reticle-glow-spin 2500ms ease-in-out infinite;
 }
 
 @keyframes reticle-glow-spin {
