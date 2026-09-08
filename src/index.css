@@ -144,11 +144,25 @@ body {
 }
 
 .reticle--processing::before {
-  animation: reticle-glow-spin 700ms linear infinite;
+  animation: reticle-glow-spin-dynamic 800ms infinite;
 }
 
 @keyframes reticle-glow-spin {
   to {
+    --reticle-angle: 360deg;
+  }
+}
+
+@keyframes reticle-glow-spin-dynamic {
+  0% {
+    --reticle-angle: 0deg;
+    animation-timing-function: cubic-bezier(0.75, 0, 0.25, 1);
+  }
+  50% {
+    --reticle-angle: 180deg;
+    animation-timing-function: cubic-bezier(0.75, 0, 0.25, 1);
+  }
+  100% {
     --reticle-angle: 360deg;
   }
 }
