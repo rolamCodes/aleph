@@ -373,7 +373,9 @@ export default function Reticle({
         glowBottomRef.current + (glowAngleRef.current / 360) * 100;
       setDash("outer", 17 + glowLevelRef.current * 9, glowPosition);
       setDash("halo", 8 + glowLevelRef.current * 8, glowPosition);
-      setDash("core", 2.5 + glowPeakRef.current * 4.5, glowPosition);
+      setDash("core-tail", 6 + glowPeakRef.current * 6, glowPosition);
+      setDash("core-shoulder", 4 + glowPeakRef.current * 5, glowPosition);
+      setDash("core", 2 + glowPeakRef.current * 3, glowPosition);
       node.style.setProperty(
         "--reticle-outer-opacity",
         `${0.08 + glowLevelRef.current * 0.42}`,
@@ -383,8 +385,16 @@ export default function Reticle({
         `${0.2 + glowLevelRef.current * 0.72}`,
       );
       node.style.setProperty(
+        "--reticle-core-tail-opacity",
+        `${0.36 + glowPeakRef.current * 0.34}`,
+      );
+      node.style.setProperty(
+        "--reticle-core-shoulder-opacity",
+        `${0.52 + glowPeakRef.current * 0.38}`,
+      );
+      node.style.setProperty(
         "--reticle-core-opacity",
-        `${0.38 + glowPeakRef.current * 0.62}`,
+        `${0.72 + glowPeakRef.current * 0.28}`,
       );
       node.style.setProperty(
         "--reticle-glow-width",
@@ -403,8 +413,16 @@ export default function Reticle({
         `${14 + glowLevelRef.current * 22}px`,
       );
       node.style.setProperty(
+        "--reticle-core-tail-width",
+        `${1 + glowPeakRef.current}px`,
+      );
+      node.style.setProperty(
+        "--reticle-core-shoulder-width",
+        `${1.8 + glowPeakRef.current * 2.7}px`,
+      );
+      node.style.setProperty(
         "--reticle-core-width",
-        `${2.5 + glowPeakRef.current * 3.5}px`,
+        `${2.8 + glowPeakRef.current * 3.7}px`,
       );
 
       if (
@@ -443,6 +461,8 @@ export default function Reticle({
       >
         <rect pathLength="100" className="reticle-glow__outer" />
         <rect pathLength="100" className="reticle-glow__halo" />
+        <rect pathLength="100" className="reticle-glow__core-tail" />
+        <rect pathLength="100" className="reticle-glow__core-shoulder" />
         <rect pathLength="100" className="reticle-glow__core" />
       </svg>
     </div>

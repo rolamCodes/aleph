@@ -101,10 +101,18 @@ body {
 
 .reticle--listening,
 .reticle--processing {
-  --reticle-core-dash-array: 2.5 97.5;
-  --reticle-core-dash-offset: -61.25;
-  --reticle-core-opacity: 0.38;
-  --reticle-core-width: 2.5px;
+  --reticle-core-dash-array: 2 98;
+  --reticle-core-dash-offset: -61.5;
+  --reticle-core-opacity: 0.72;
+  --reticle-core-shoulder-dash-array: 4 96;
+  --reticle-core-shoulder-dash-offset: -60.5;
+  --reticle-core-shoulder-opacity: 0.52;
+  --reticle-core-shoulder-width: 1.8px;
+  --reticle-core-tail-dash-array: 6 94;
+  --reticle-core-tail-dash-offset: -59.5;
+  --reticle-core-tail-opacity: 0.36;
+  --reticle-core-tail-width: 1px;
+  --reticle-core-width: 2.8px;
   --reticle-glow-width: 8px;
   --reticle-halo-blur: 5px;
   --reticle-halo-dash-array: 8 92;
@@ -160,10 +168,28 @@ body {
   stroke-width: var(--reticle-glow-width);
 }
 
-.reticle-glow__core {
+.reticle-glow__core-tail {
+  filter: drop-shadow(0 0 5px var(--reticle-glow));
+  opacity: var(--reticle-core-tail-opacity);
+  stroke: #70d7ff;
+  stroke-dasharray: var(--reticle-core-tail-dash-array);
+  stroke-dashoffset: var(--reticle-core-tail-dash-offset);
+  stroke-width: var(--reticle-core-tail-width);
+}
+
+.reticle-glow__core-shoulder {
   filter: drop-shadow(0 0 4px var(--reticle-glow-hot));
+  opacity: var(--reticle-core-shoulder-opacity);
+  stroke: #bceeff;
+  stroke-dasharray: var(--reticle-core-shoulder-dash-array);
+  stroke-dashoffset: var(--reticle-core-shoulder-dash-offset);
+  stroke-width: var(--reticle-core-shoulder-width);
+}
+
+.reticle-glow__core {
+  filter: drop-shadow(0 0 3px var(--reticle-glow-hot));
   opacity: var(--reticle-core-opacity);
-  stroke: #dff3ff;
+  stroke: #f5fcff;
   stroke-dasharray: var(--reticle-core-dash-array);
   stroke-dashoffset: var(--reticle-core-dash-offset);
   stroke-width: var(--reticle-core-width);
