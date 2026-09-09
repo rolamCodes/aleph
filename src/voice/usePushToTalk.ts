@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { RefObject } from "react";
 import type { PointedTarget, VoiceStatus } from "../types";
 
 const MAX_RECORDING_MS = 30_000;
@@ -90,11 +91,13 @@ export function usePushToTalk({
   onRecording: (audio: Blob, target: PointedTarget) => Promise<void>;
 }): {
   error: string | null;
+  levelRef: RefObject<number>;
   status: VoiceStatus;
 } {
   const [status, setStatus] = useState<VoiceStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const activeRef = useRef<ActiveCapture | null>(null);
+  const levelRef = useRef(0);
   const mountedRef = useRef(true);
   const onRecordingRef = useRef(onRecording);
   const pointedTargetRef = useRef(pointedTarget);
@@ -120,6 +123,7 @@ export function usePushToTalk({
     const cancel = (): void => {
       pressedRef.current = false;
       requestIdRef.current += 1;
+      levelRef.current = 0;
       const active = activeRef.current;
       activeRef.current = null;
       if (active) {
@@ -131,6 +135,7 @@ export function usePushToTalk({
     const fail = (reason: unknown): void => {
       const message =
         reason instanceof Error ? reason.message : "Voice command failed";
+      levelRef.current = 0;
       setError(message);
       updateStatus("error");
     };
@@ -142,6 +147,7 @@ export function usePushToTalk({
       }
 
       activeRef.current = null;
+      levelRef.current = 0;
       const sampleRate = active.audioContext.sampleRate;
       releaseCapture(active);
       const audio = encodeWav(active.chunks, sampleRate);
@@ -207,7 +213,19 @@ export function usePushToTalk({
 
         silentGain.gain.value = 0;
         processor.onaudioprocess = (event) => {
-          chunks.push(new Float32Array(event.inputBuffer.getChannelData(0)));
+          const samples = event.inputBuffer.getChannelData(0);
+          chunks.push(new Float32Array(samples));
+
+          let sumSquares = 0;
+          for (const sample of samples) {
+            sumSquares += sample * sample;
+          }
+          const rms = Math.sqrt(sumSquares / samples.length);
+          const normalized = Math.min(1, Math.max(0, (rms - 0.008) / 0.12));
+          const smoothing =
+            normalized > levelRef.current ? 0.55 : 0.18;
+          levelRef.current +=
+            (normalized - levelRef.current) * smoothing;
         };
         source.connect(processor);
         processor.connect(silentGain);
@@ -282,5 +300,5 @@ export function usePushToTalk({
     };
   }, []);
 
-  return { error, status };
+  return { error, levelRef, status };
 }

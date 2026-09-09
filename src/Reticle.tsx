@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import type { RefObject } from "react";
 import type { PointedTarget, VoiceStatus } from "./types";
 
 const IDLE_SIZE = 8;
@@ -120,11 +121,13 @@ function elementForTarget(target: PointedTarget): Element | null {
 }
 
 export default function Reticle({
+  audioLevelRef,
   focusTarget,
   frozen = false,
   onTargetChange,
   status,
 }: {
+  audioLevelRef: RefObject<number>;
   focusTarget?: PointedTarget;
   frozen?: boolean;
   onTargetChange: (target: PointedTarget) => void;
@@ -134,6 +137,8 @@ export default function Reticle({
   const attachedRef = useRef<Element | null>(null);
   const pointerRef = useRef({ x: 0, y: 0, inside: false });
   const frozenPositionRef = useRef<{ x: number; y: number } | null>(null);
+  const glowAngleRef = useRef(0);
+  const glowLevelRef = useRef(0);
   const targetKeyRef = useRef("canvas");
 
   useEffect(() => {
@@ -141,6 +146,9 @@ export default function Reticle({
     if (!node) {
       return;
     }
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
 
     if (!frozen) {
       frozenPositionRef.current = null;
@@ -247,8 +255,43 @@ export default function Reticle({
     };
 
     let raf = 0;
-    const loop = () => {
+    let previousFrame = performance.now();
+    const loop = (frame: number) => {
+      const elapsed = Math.min(frame - previousFrame, 50);
+      previousFrame = frame;
+
+      const targetGlowLevel =
+        status === "listening"
+          ? audioLevelRef.current
+          : status === "processing"
+            ? 0.72
+            : 0;
+      const response = targetGlowLevel > glowLevelRef.current ? 0.24 : 0.1;
+      glowLevelRef.current +=
+        (targetGlowLevel - glowLevelRef.current) * response;
+
+      if (status === "processing" && !reduceMotion) {
+        glowAngleRef.current =
+          (glowAngleRef.current + elapsed * 0.1) % 360;
+      } else {
+        glowAngleRef.current = 0;
+      }
+
+      node.style.setProperty(
+        "--reticle-angle",
+        `${glowAngleRef.current}deg`,
+      );
+      node.style.setProperty(
+        "--reticle-glow-opacity",
+        `${0.45 + glowLevelRef.current * 0.55}`,
+      );
+      node.style.setProperty(
+        "--reticle-glow-blur",
+        `${18 + glowLevelRef.current * 28}px`,
+      );
+
       if (
+        status === "listening" ||
         status === "processing" ||
         frozen ||
         (attachedRef.current && pointerRef.current.inside)
@@ -268,7 +311,7 @@ export default function Reticle({
       document.documentElement.removeEventListener("pointerleave", onLeave);
       cancelAnimationFrame(raf);
     };
-  }, [focusTarget, frozen, onTargetChange, status]);
+  }, [audioLevelRef, focusTarget, frozen, onTargetChange, status]);
 
   return (
     <div

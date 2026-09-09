@@ -99,35 +99,34 @@ body {
   border-radius: 50%;
 }
 
-@property --reticle-angle {
-  syntax: "<angle>";
-  initial-value: 0deg;
-  inherits: false;
-}
-
-.reticle--listening {
+.reticle--listening,
+.reticle--processing {
+  --reticle-angle: 0deg;
+  --reticle-glow-blur: 18px;
+  --reticle-glow-opacity: 0.45;
   --reticle-glow: #3b9eff;
   --reticle-glow-hot: #9fd2ff;
-}
-
-.reticle--processing {
-  --reticle-glow: #f3bd42;
-  --reticle-glow-hot: #ffe08a;
-  border-color: #f3bd42;
+  border-color: #3b9eff;
 }
 
 .reticle--listening::before,
 .reticle--processing::before {
-  background: conic-gradient(from var(--reticle-angle),
-      transparent 0 68%,
-      color-mix(in srgb, var(--reticle-glow) 0%, transparent) 68%,
-      var(--reticle-glow) 88%,
-      var(--reticle-glow-hot) 96%,
-      var(--reticle-glow));
+  background: conic-gradient(
+    from var(--reticle-angle),
+    transparent 0 38%,
+    color-mix(in srgb, var(--reticle-glow) 12%, transparent) 42%,
+    var(--reticle-glow) 47%,
+    var(--reticle-glow-hot) 50%,
+    var(--reticle-glow) 53%,
+    color-mix(in srgb, var(--reticle-glow) 12%, transparent) 58%,
+    transparent 62% 100%
+  );
   border-radius: 3px;
   box-sizing: border-box;
   content: "";
-  filter: drop-shadow(0 0 32px var(--reticle-glow));
+  filter:
+    drop-shadow(0 0 var(--reticle-glow-blur) var(--reticle-glow))
+    drop-shadow(0 0 8px var(--reticle-glow-hot));
   inset: -2px;
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
@@ -137,9 +136,14 @@ body {
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   mask-composite: exclude;
+  opacity: var(--reticle-glow-opacity);
   padding: 8px;
   pointer-events: none;
   position: absolute;
+  transition:
+    filter 90ms linear,
+    opacity 90ms linear;
+  will-change: filter, opacity;
 }
 
 .reticle--active-idle.reticle--listening::before,
@@ -147,17 +151,10 @@ body {
   border-radius: 50%;
 }
 
-.reticle--listening::before {
-  animation: reticle-glow-spin 5000ms ease-in-out infinite;
-}
-
-.reticle--processing::before {
-  animation: reticle-glow-spin 2500ms ease-in-out infinite;
-}
-
-@keyframes reticle-glow-spin {
-  to {
-    --reticle-angle: 360deg;
+@media (prefers-reduced-motion: reduce) {
+  .reticle--listening::before,
+  .reticle--processing::before {
+    transition: none;
   }
 }
 
