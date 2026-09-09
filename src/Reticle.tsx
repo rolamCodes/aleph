@@ -139,9 +139,11 @@ export default function Reticle({
   const pointerRef = useRef({ x: 0, y: 0, inside: false });
   const frozenPositionRef = useRef<{ x: number; y: number } | null>(null);
   const glowAngleRef = useRef(0);
+  const glowVelocityRef = useRef(0);
   const glowBottomRef = useRef(62.5);
   const glowGeometryRef = useRef("");
   const glowLevelRef = useRef(0);
+  const glowPeakRef = useRef(0);
   const targetKeyRef = useRef("canvas");
 
   useEffect(() => {
@@ -294,11 +296,26 @@ export default function Reticle({
     let raf = 0;
     let previousFrame = performance.now();
     let meterSamples = new Float32Array(1024);
+    const setDash = (name: string, length: number, position: number) => {
+      node.style.setProperty(
+        `--reticle-${name}-dash-array`,
+        `${length} ${100 - length}`,
+      );
+      node.style.setProperty(
+        `--reticle-${name}-dash-offset`,
+        `${length / 2 - position}`,
+      );
+    };
     const loop = (frame: number) => {
       const elapsed = Math.min(frame - previousFrame, 50);
       previousFrame = frame;
 
-      let targetGlowLevel = status === "processing" ? 0.68 : 0;
+      const processingPulse =
+        status === "processing" ? Math.sin(frame / 720) * 0.055 : 0;
+      let targetGlowLevel =
+        status === "processing" ? 0.62 + processingPulse : 0;
+      let targetPeakLevel =
+        status === "processing" ? 0.72 + processingPulse : 0;
       const analyser = analyserRef.current;
       if (status === "listening" && analyser) {
         if (meterSamples.length !== analyser.fftSize) {
@@ -313,51 +330,81 @@ export default function Reticle({
           sumSquares += sample * sample;
         }
         const rms = Math.sqrt(sumSquares / meterSamples.length);
-        const rmsLevel = Math.min(1, Math.max(0, (rms - 0.0025) / 0.055));
-        const peakLevel = Math.min(1, Math.max(0, (peak - 0.015) / 0.3));
-        targetGlowLevel = Math.min(1, Math.max(rmsLevel, peakLevel * 0.8));
+        const rmsLevel = Math.pow(
+          Math.min(1, Math.max(0, (rms - 0.0025) / 0.055)),
+          0.65,
+        );
+        const peakLevel = Math.pow(
+          Math.min(1, Math.max(0, (peak - 0.012) / 0.25)),
+          0.72,
+        );
+        targetGlowLevel = Math.min(1, Math.max(rmsLevel, peakLevel * 0.45));
+        targetPeakLevel = Math.min(1, Math.max(peakLevel, rmsLevel * 0.65));
       }
-      const response = targetGlowLevel > glowLevelRef.current ? 0.42 : 0.1;
+      const response =
+        1 -
+        Math.exp(
+          -elapsed /
+            (targetGlowLevel > glowLevelRef.current ? 36 : 190),
+        );
+      const peakResponse =
+        1 -
+        Math.exp(
+          -elapsed /
+            (targetPeakLevel > glowPeakRef.current ? 22 : 125),
+        );
       glowLevelRef.current +=
         (targetGlowLevel - glowLevelRef.current) * response;
+      glowPeakRef.current +=
+        (targetPeakLevel - glowPeakRef.current) * peakResponse;
 
       if (status === "processing" && !reduceMotion) {
+        const velocityResponse = 1 - Math.exp(-elapsed / 420);
+        glowVelocityRef.current +=
+          (0.1 - glowVelocityRef.current) * velocityResponse;
         glowAngleRef.current =
-          (glowAngleRef.current + elapsed * 0.1) % 360;
+          (glowAngleRef.current + elapsed * glowVelocityRef.current) % 360;
       } else {
         glowAngleRef.current = 0;
+        glowVelocityRef.current = 0;
       }
 
-      const dashLength = 10 + glowLevelRef.current * 10;
       const glowPosition =
         glowBottomRef.current + (glowAngleRef.current / 360) * 100;
+      setDash("outer", 17 + glowLevelRef.current * 9, glowPosition);
+      setDash("halo", 8 + glowLevelRef.current * 8, glowPosition);
+      setDash("core", 2.5 + glowPeakRef.current * 4.5, glowPosition);
       node.style.setProperty(
-        "--reticle-dash-array",
-        `${dashLength} ${100 - dashLength}`,
+        "--reticle-outer-opacity",
+        `${0.08 + glowLevelRef.current * 0.42}`,
       );
       node.style.setProperty(
-        "--reticle-dash-offset",
-        `${dashLength / 2 - glowPosition}`,
+        "--reticle-halo-opacity",
+        `${0.2 + glowLevelRef.current * 0.72}`,
       );
       node.style.setProperty(
-        "--reticle-glow-opacity",
-        `${0.18 + glowLevelRef.current * 0.82}`,
+        "--reticle-core-opacity",
+        `${0.38 + glowPeakRef.current * 0.62}`,
       );
       node.style.setProperty(
         "--reticle-glow-width",
-        `${10 + glowLevelRef.current * 28}px`,
+        `${8 + glowLevelRef.current * 30}px`,
       );
       node.style.setProperty(
         "--reticle-outer-width",
-        `${24 + glowLevelRef.current * 48}px`,
+        `${24 + glowLevelRef.current * 58}px`,
       );
       node.style.setProperty(
         "--reticle-halo-blur",
-        `${5 + glowLevelRef.current * 8}px`,
+        `${5 + glowLevelRef.current * 9}px`,
       );
       node.style.setProperty(
         "--reticle-outer-blur",
-        `${12 + glowLevelRef.current * 18}px`,
+        `${14 + glowLevelRef.current * 22}px`,
+      );
+      node.style.setProperty(
+        "--reticle-core-width",
+        `${2.5 + glowPeakRef.current * 3.5}px`,
       );
 
       if (

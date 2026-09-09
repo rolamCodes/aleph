@@ -101,16 +101,23 @@ body {
 
 .reticle--listening,
 .reticle--processing {
-  --reticle-dash-array: 14 86;
-  --reticle-dash-offset: -55.5;
-  --reticle-glow-opacity: 0.18;
-  --reticle-glow-width: 10px;
+  --reticle-core-dash-array: 2.5 97.5;
+  --reticle-core-dash-offset: -61.25;
+  --reticle-core-opacity: 0.38;
+  --reticle-core-width: 2.5px;
+  --reticle-glow-width: 8px;
   --reticle-halo-blur: 5px;
-  --reticle-outer-blur: 12px;
+  --reticle-halo-dash-array: 8 92;
+  --reticle-halo-dash-offset: -58.5;
+  --reticle-halo-opacity: 0.2;
+  --reticle-outer-blur: 14px;
+  --reticle-outer-dash-array: 17 83;
+  --reticle-outer-dash-offset: -54;
+  --reticle-outer-opacity: 0.08;
   --reticle-outer-width: 24px;
-  --reticle-glow: #3b9eff;
-  --reticle-glow-hot: #9fd2ff;
-  border-color: #3b9eff;
+  --reticle-glow: #55c8ff;
+  --reticle-glow-hot: #eaf9ff;
+  border-color: #15b9ff;
 }
 
 .reticle-glow {
@@ -119,40 +126,53 @@ body {
   opacity: 0;
   overflow: visible;
   position: absolute;
+  transition: opacity 220ms ease;
   width: 100%;
+  will-change: opacity;
 }
 
 .reticle--listening .reticle-glow,
 .reticle--processing .reticle-glow {
-  opacity: var(--reticle-glow-opacity);
+  opacity: 1;
 }
 
 .reticle-glow rect {
   fill: none;
-  stroke-dasharray: var(--reticle-dash-array);
-  stroke-dashoffset: var(--reticle-dash-offset);
   stroke-linecap: round;
   vector-effect: non-scaling-stroke;
 }
 
 .reticle-glow__outer {
   filter: blur(var(--reticle-outer-blur));
-  opacity: 0.42;
+  opacity: var(--reticle-outer-opacity);
   stroke: var(--reticle-glow-hot);
+  stroke-dasharray: var(--reticle-outer-dash-array);
+  stroke-dashoffset: var(--reticle-outer-dash-offset);
   stroke-width: var(--reticle-outer-width);
 }
 
 .reticle-glow__halo {
   filter: blur(var(--reticle-halo-blur));
-  opacity: 0.78;
+  opacity: var(--reticle-halo-opacity);
   stroke: var(--reticle-glow);
+  stroke-dasharray: var(--reticle-halo-dash-array);
+  stroke-dashoffset: var(--reticle-halo-dash-offset);
   stroke-width: var(--reticle-glow-width);
 }
 
 .reticle-glow__core {
   filter: drop-shadow(0 0 4px var(--reticle-glow-hot));
+  opacity: var(--reticle-core-opacity);
   stroke: #dff3ff;
-  stroke-width: 2.5px;
+  stroke-dasharray: var(--reticle-core-dash-array);
+  stroke-dashoffset: var(--reticle-core-dash-offset);
+  stroke-width: var(--reticle-core-width);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reticle-glow {
+    transition: none;
+  }
 }
 
 .reticle--error {
