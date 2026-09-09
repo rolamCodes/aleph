@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { PointedTarget, VoiceStatus } from "../types";
 
 const MAX_RECORDING_MS = 30_000;
 const BUFFER_SIZE = 4096;
 
 type ActiveCapture = {
+  analyser: AnalyserNode;
+  analysisSamples: Float32Array<ArrayBuffer>;
   audioContext: AudioContext;
   chunks: Float32Array[];
   processor: ScriptProcessorNode;
@@ -70,15 +72,20 @@ function encodeWav(chunks: Float32Array[], sampleRate: number): Blob | null {
   return new Blob([buffer], { type: "audio/wav" });
 }
 
+function stopStream(stream: MediaStream): void {
+  for (const track of stream.getTracks()) {
+    track.stop();
+  }
+}
+
 function releaseCapture(capture: ActiveCapture): void {
   clearTimeout(capture.timeout);
   capture.processor.onaudioprocess = null;
   capture.source.disconnect();
   capture.processor.disconnect();
   capture.silentGain.disconnect();
-  for (const track of capture.stream.getTracks()) {
-    track.stop();
-  }
+  capture.analyser.disconnect();
+  stopStream(capture.stream);
   void capture.audioContext.close();
 }
 
@@ -90,6 +97,7 @@ export function usePushToTalk({
   onRecording: (audio: Blob, target: PointedTarget) => Promise<void>;
 }): {
   error: string | null;
+  readAudioLevel: () => number;
   status: VoiceStatus;
 } {
   const [status, setStatus] = useState<VoiceStatus>("idle");
@@ -106,6 +114,23 @@ export function usePushToTalk({
     onRecordingRef.current = onRecording;
     pointedTargetRef.current = pointedTarget;
   }, [onRecording, pointedTarget]);
+
+  const readAudioLevel = useCallback((): number => {
+    const active = activeRef.current;
+    if (!active) {
+      return 0;
+    }
+
+    active.analyser.getFloatTimeDomainData(active.analysisSamples);
+
+    let sumSquares = 0;
+    for (const sample of active.analysisSamples) {
+      sumSquares += sample * sample;
+    }
+    const rms = Math.sqrt(sumSquares / active.analysisSamples.length);
+    const db = 20 * Math.log10(Math.max(rms, 1e-6));
+    return Math.max(0, Math.min(1, (db + 55) / 35));
+  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -168,10 +193,13 @@ export function usePushToTalk({
       const requestId = requestIdRef.current + 1;
       requestIdRef.current = requestId;
       const target = pointedTargetRef.current;
-      updateStatus("listening");
+      updateStatus("preparing");
+
+      let stream: MediaStream | null = null;
+      let audioContext: AudioContext | null = null;
 
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
+        stream = await navigator.mediaDevices.getUserMedia({
           audio: true,
         });
         if (
@@ -179,30 +207,36 @@ export function usePushToTalk({
           !pressedRef.current ||
           requestId !== requestIdRef.current
         ) {
-          for (const track of stream.getTracks()) {
-            track.stop();
+          stopStream(stream);
+          if (requestId === requestIdRef.current) {
+            updateStatus("idle");
           }
-          updateStatus("idle");
           return;
         }
 
-        const audioContext = new AudioContext();
+        audioContext = new AudioContext();
         await audioContext.resume();
         if (
           !mountedRef.current ||
           !pressedRef.current ||
           requestId !== requestIdRef.current
         ) {
-          for (const track of stream.getTracks()) {
-            track.stop();
-          }
+          stopStream(stream);
           await audioContext.close();
-          updateStatus("idle");
+          if (requestId === requestIdRef.current) {
+            updateStatus("idle");
+          }
           return;
         }
+
         const source = audioContext.createMediaStreamSource(stream);
         const processor = audioContext.createScriptProcessor(BUFFER_SIZE, 1, 1);
         const silentGain = audioContext.createGain();
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 1024;
+        const analysisSamples = new Float32Array(
+          analyser.fftSize,
+        ) as Float32Array<ArrayBuffer>;
         const chunks: Float32Array[] = [];
 
         silentGain.gain.value = 0;
@@ -212,6 +246,7 @@ export function usePushToTalk({
         source.connect(processor);
         processor.connect(silentGain);
         silentGain.connect(audioContext.destination);
+        source.connect(analyser);
 
         const timeout = setTimeout(() => {
           pressedRef.current = false;
@@ -219,6 +254,8 @@ export function usePushToTalk({
         }, MAX_RECORDING_MS);
 
         activeRef.current = {
+          analyser,
+          analysisSamples,
           audioContext,
           chunks,
           processor,
@@ -230,7 +267,15 @@ export function usePushToTalk({
         };
         updateStatus("listening");
       } catch (reason) {
-        fail(reason);
+        if (stream) {
+          stopStream(stream);
+        }
+        if (audioContext) {
+          void audioContext.close();
+        }
+        if (requestId === requestIdRef.current) {
+          fail(reason);
+        }
       }
     };
 
@@ -282,5 +327,5 @@ export function usePushToTalk({
     };
   }, []);
 
-  return { error, status };
+  return { error, readAudioLevel, status };
 }

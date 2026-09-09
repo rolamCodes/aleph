@@ -18,6 +18,7 @@ export type PointedTarget =
 
 export type VoiceStatus =
   | "idle"
+  | "preparing"
   | "listening"
   | "processing"
   | "error";
