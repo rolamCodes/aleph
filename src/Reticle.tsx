@@ -121,23 +121,26 @@ function elementForTarget(target: PointedTarget): Element | null {
 }
 
 export default function Reticle({
-  audioLevelRef,
+  analyserRef,
   focusTarget,
   frozen = false,
   onTargetChange,
   status,
 }: {
-  audioLevelRef: RefObject<number>;
+  analyserRef: RefObject<AnalyserNode | null>;
   focusTarget?: PointedTarget;
   frozen?: boolean;
   onTargetChange: (target: PointedTarget) => void;
   status: VoiceStatus;
 }) {
   const elRef = useRef<HTMLDivElement>(null);
+  const glowSvgRef = useRef<SVGSVGElement>(null);
   const attachedRef = useRef<Element | null>(null);
   const pointerRef = useRef({ x: 0, y: 0, inside: false });
   const frozenPositionRef = useRef<{ x: number; y: number } | null>(null);
   const glowAngleRef = useRef(0);
+  const glowBottomRef = useRef(62.5);
+  const glowGeometryRef = useRef("");
   const glowLevelRef = useRef(0);
   const targetKeyRef = useRef("canvas");
 
@@ -154,6 +157,38 @@ export default function Reticle({
       frozenPositionRef.current = null;
     }
 
+    const applyGlowGeometry = (
+      width: number,
+      height: number,
+      circular: boolean,
+    ) => {
+      const svg = glowSvgRef.current;
+      const geometryKey = `${width}:${height}:${circular}`;
+      if (!svg || geometryKey === glowGeometryRef.current) {
+        return;
+      }
+
+      glowGeometryRef.current = geometryKey;
+      svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+      const inset = 2;
+      const rectWidth = Math.max(1, width - inset * 2);
+      const rectHeight = Math.max(1, height - inset * 2);
+      const radius = circular
+        ? Math.max(0, Math.min(rectWidth, rectHeight) / 2)
+        : 3;
+      for (const rect of svg.querySelectorAll("rect")) {
+        rect.setAttribute("x", `${inset}`);
+        rect.setAttribute("y", `${inset}`);
+        rect.setAttribute("width", `${rectWidth}`);
+        rect.setAttribute("height", `${rectHeight}`);
+        rect.setAttribute("rx", `${radius}`);
+      }
+      glowBottomRef.current =
+        ((rectWidth * 1.5 + rectHeight) /
+          (2 * (rectWidth + rectHeight))) *
+        100;
+    };
+
     const applyIdle = (x: number, y: number) => {
       const active = status === "listening" || status === "processing";
       const size = active ? ACTIVE_IDLE_SIZE : IDLE_SIZE;
@@ -163,6 +198,7 @@ export default function Reticle({
       node.style.height = `${size}px`;
       node.style.left = `${x - CURSOR_OFFSET - size}px`;
       node.style.top = `${y - CURSOR_OFFSET - size}px`;
+      applyGlowGeometry(size, size, active);
     };
 
     const applySnap = (box: Box) => {
@@ -172,6 +208,7 @@ export default function Reticle({
       node.style.height = `${box.height}px`;
       node.style.left = `${box.left}px`;
       node.style.top = `${box.top}px`;
+      applyGlowGeometry(box.width, box.height, false);
     };
 
     const reportTarget = (target: PointedTarget) => {
@@ -256,17 +293,31 @@ export default function Reticle({
 
     let raf = 0;
     let previousFrame = performance.now();
+    let meterSamples = new Float32Array(1024);
     const loop = (frame: number) => {
       const elapsed = Math.min(frame - previousFrame, 50);
       previousFrame = frame;
 
-      const targetGlowLevel =
-        status === "listening"
-          ? audioLevelRef.current
-          : status === "processing"
-            ? 0.72
-            : 0;
-      const response = targetGlowLevel > glowLevelRef.current ? 0.24 : 0.1;
+      let targetGlowLevel = status === "processing" ? 0.68 : 0;
+      const analyser = analyserRef.current;
+      if (status === "listening" && analyser) {
+        if (meterSamples.length !== analyser.fftSize) {
+          meterSamples = new Float32Array(analyser.fftSize);
+        }
+        analyser.getFloatTimeDomainData(meterSamples);
+        let peak = 0;
+        let sumSquares = 0;
+        for (const sample of meterSamples) {
+          const magnitude = Math.abs(sample);
+          peak = Math.max(peak, magnitude);
+          sumSquares += sample * sample;
+        }
+        const rms = Math.sqrt(sumSquares / meterSamples.length);
+        const rmsLevel = Math.min(1, Math.max(0, (rms - 0.0025) / 0.055));
+        const peakLevel = Math.min(1, Math.max(0, (peak - 0.015) / 0.3));
+        targetGlowLevel = Math.min(1, Math.max(rmsLevel, peakLevel * 0.8));
+      }
+      const response = targetGlowLevel > glowLevelRef.current ? 0.42 : 0.1;
       glowLevelRef.current +=
         (targetGlowLevel - glowLevelRef.current) * response;
 
@@ -277,17 +328,36 @@ export default function Reticle({
         glowAngleRef.current = 0;
       }
 
+      const dashLength = 10 + glowLevelRef.current * 10;
+      const glowPosition =
+        glowBottomRef.current + (glowAngleRef.current / 360) * 100;
       node.style.setProperty(
-        "--reticle-angle",
-        `${glowAngleRef.current}deg`,
+        "--reticle-dash-array",
+        `${dashLength} ${100 - dashLength}`,
+      );
+      node.style.setProperty(
+        "--reticle-dash-offset",
+        `${dashLength / 2 - glowPosition}`,
       );
       node.style.setProperty(
         "--reticle-glow-opacity",
-        `${0.45 + glowLevelRef.current * 0.55}`,
+        `${0.18 + glowLevelRef.current * 0.82}`,
       );
       node.style.setProperty(
-        "--reticle-glow-blur",
-        `${18 + glowLevelRef.current * 28}px`,
+        "--reticle-glow-width",
+        `${10 + glowLevelRef.current * 28}px`,
+      );
+      node.style.setProperty(
+        "--reticle-outer-width",
+        `${24 + glowLevelRef.current * 48}px`,
+      );
+      node.style.setProperty(
+        "--reticle-halo-blur",
+        `${5 + glowLevelRef.current * 8}px`,
+      );
+      node.style.setProperty(
+        "--reticle-outer-blur",
+        `${12 + glowLevelRef.current * 18}px`,
       );
 
       if (
@@ -311,13 +381,23 @@ export default function Reticle({
       document.documentElement.removeEventListener("pointerleave", onLeave);
       cancelAnimationFrame(raf);
     };
-  }, [audioLevelRef, focusTarget, frozen, onTargetChange, status]);
+  }, [analyserRef, focusTarget, frozen, onTargetChange, status]);
 
   return (
     <div
       ref={elRef}
       className={`reticle reticle--${status}`}
       aria-hidden="true"
-    />
+    >
+      <svg
+        ref={glowSvgRef}
+        className="reticle-glow"
+        preserveAspectRatio="none"
+      >
+        <rect pathLength="100" className="reticle-glow__outer" />
+        <rect pathLength="100" className="reticle-glow__halo" />
+        <rect pathLength="100" className="reticle-glow__core" />
+      </svg>
+    </div>
   );
 }

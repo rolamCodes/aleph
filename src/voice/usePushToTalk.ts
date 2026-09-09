@@ -6,6 +6,7 @@ const MAX_RECORDING_MS = 30_000;
 const BUFFER_SIZE = 4096;
 
 type ActiveCapture = {
+  analyser: AnalyserNode;
   audioContext: AudioContext;
   chunks: Float32Array[];
   processor: ScriptProcessorNode;
@@ -75,6 +76,7 @@ function releaseCapture(capture: ActiveCapture): void {
   clearTimeout(capture.timeout);
   capture.processor.onaudioprocess = null;
   capture.source.disconnect();
+  capture.analyser.disconnect();
   capture.processor.disconnect();
   capture.silentGain.disconnect();
   for (const track of capture.stream.getTracks()) {
@@ -90,14 +92,14 @@ export function usePushToTalk({
   pointedTarget: PointedTarget;
   onRecording: (audio: Blob, target: PointedTarget) => Promise<void>;
 }): {
+  analyserRef: RefObject<AnalyserNode | null>;
   error: string | null;
-  levelRef: RefObject<number>;
   status: VoiceStatus;
 } {
   const [status, setStatus] = useState<VoiceStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const activeRef = useRef<ActiveCapture | null>(null);
-  const levelRef = useRef(0);
+  const analyserRef = useRef<AnalyserNode | null>(null);
   const mountedRef = useRef(true);
   const onRecordingRef = useRef(onRecording);
   const pointedTargetRef = useRef(pointedTarget);
@@ -123,7 +125,7 @@ export function usePushToTalk({
     const cancel = (): void => {
       pressedRef.current = false;
       requestIdRef.current += 1;
-      levelRef.current = 0;
+      analyserRef.current = null;
       const active = activeRef.current;
       activeRef.current = null;
       if (active) {
@@ -135,7 +137,7 @@ export function usePushToTalk({
     const fail = (reason: unknown): void => {
       const message =
         reason instanceof Error ? reason.message : "Voice command failed";
-      levelRef.current = 0;
+      analyserRef.current = null;
       setError(message);
       updateStatus("error");
     };
@@ -147,7 +149,7 @@ export function usePushToTalk({
       }
 
       activeRef.current = null;
-      levelRef.current = 0;
+      analyserRef.current = null;
       const sampleRate = active.audioContext.sampleRate;
       releaseCapture(active);
       const audio = encodeWav(active.chunks, sampleRate);
@@ -207,27 +209,20 @@ export function usePushToTalk({
           return;
         }
         const source = audioContext.createMediaStreamSource(stream);
+        const analyser = audioContext.createAnalyser();
         const processor = audioContext.createScriptProcessor(BUFFER_SIZE, 1, 1);
         const silentGain = audioContext.createGain();
         const chunks: Float32Array[] = [];
 
+        analyser.fftSize = 1024;
+        analyser.smoothingTimeConstant = 0;
         silentGain.gain.value = 0;
         processor.onaudioprocess = (event) => {
           const samples = event.inputBuffer.getChannelData(0);
           chunks.push(new Float32Array(samples));
-
-          let sumSquares = 0;
-          for (const sample of samples) {
-            sumSquares += sample * sample;
-          }
-          const rms = Math.sqrt(sumSquares / samples.length);
-          const normalized = Math.min(1, Math.max(0, (rms - 0.008) / 0.12));
-          const smoothing =
-            normalized > levelRef.current ? 0.55 : 0.18;
-          levelRef.current +=
-            (normalized - levelRef.current) * smoothing;
         };
-        source.connect(processor);
+        source.connect(analyser);
+        analyser.connect(processor);
         processor.connect(silentGain);
         silentGain.connect(audioContext.destination);
 
@@ -237,6 +232,7 @@ export function usePushToTalk({
         }, MAX_RECORDING_MS);
 
         activeRef.current = {
+          analyser,
           audioContext,
           chunks,
           processor,
@@ -246,6 +242,7 @@ export function usePushToTalk({
           target,
           timeout,
         };
+        analyserRef.current = analyser;
         updateStatus("listening");
       } catch (reason) {
         fail(reason);
@@ -300,5 +297,5 @@ export function usePushToTalk({
     };
   }, []);
 
-  return { error, levelRef, status };
+  return { analyserRef, error, status };
 }

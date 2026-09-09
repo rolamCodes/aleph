@@ -304,7 +304,7 @@ export default function Canvas() {
         <Background color="#303435" gap={20} size={2} />
       </ReactFlow>
       <Reticle
-        audioLevelRef={voice.levelRef}
+        analyserRef={voice.analyserRef}
         frozen={
           voice.status === "processing" &&
           processingTarget.kind === "canvas" &&
