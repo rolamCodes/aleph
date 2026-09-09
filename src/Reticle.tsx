@@ -123,18 +123,34 @@ export default function Reticle({
   focusTarget,
   frozen = false,
   onTargetChange,
+  readAudioLevel,
   status,
 }: {
   focusTarget?: PointedTarget;
   frozen?: boolean;
   onTargetChange: (target: PointedTarget) => void;
+  readAudioLevel: () => number;
   status: VoiceStatus;
 }) {
   const elRef = useRef<HTMLDivElement>(null);
   const attachedRef = useRef<Element | null>(null);
   const pointerRef = useRef({ x: 0, y: 0, inside: false });
   const frozenPositionRef = useRef<{ x: number; y: number } | null>(null);
+  const previousAudioFrameRef = useRef<number | null>(null);
+  const smoothedAudioLevelRef = useRef(0);
   const targetKeyRef = useRef("canvas");
+
+  useEffect(() => {
+    smoothedAudioLevelRef.current = 0;
+    previousAudioFrameRef.current = null;
+
+    if (status === "listening") {
+      const node = elRef.current;
+      node?.style.setProperty("--listen-opacity", "0.18");
+      node?.style.setProperty("--listen-blur", "3px");
+      node?.style.setProperty("--listen-spread", "0px");
+    }
+  }, [status]);
 
   useEffect(() => {
     const node = elRef.current;
@@ -247,7 +263,42 @@ export default function Reticle({
     };
 
     let raf = 0;
-    const loop = () => {
+    const updateAudioAppearance = (timestamp: number) => {
+      if (status !== "listening") {
+        return;
+      }
+      if (document.hidden) {
+        previousAudioFrameRef.current = null;
+        return;
+      }
+
+      const previousTimestamp = previousAudioFrameRef.current;
+      const dtMs =
+        previousTimestamp === null
+          ? 1000 / 60
+          : Math.min(100, Math.max(0, timestamp - previousTimestamp));
+      previousAudioFrameRef.current = timestamp;
+
+      const rawLevel = readAudioLevel();
+      const smoothedLevel = smoothedAudioLevelRef.current;
+      const tauMs = rawLevel > smoothedLevel ? 50 : 200;
+      const alpha = 1 - Math.exp(-dtMs / tauMs);
+      const nextLevel =
+        smoothedLevel + (rawLevel - smoothedLevel) * alpha;
+      smoothedAudioLevelRef.current = nextLevel;
+
+      node.style.setProperty(
+        "--listen-opacity",
+        `${0.18 + 0.52 * nextLevel}`,
+      );
+      node.style.setProperty("--listen-blur", `${3 + 9 * nextLevel}px`);
+      node.style.setProperty(
+        "--listen-spread",
+        `${1.5 * nextLevel}px`,
+      );
+    };
+
+    const loop = (timestamp: number) => {
       if (
         status === "processing" ||
         frozen ||
@@ -255,6 +306,7 @@ export default function Reticle({
       ) {
         update();
       }
+      updateAudioAppearance(timestamp);
       raf = requestAnimationFrame(loop);
     };
 
@@ -268,7 +320,7 @@ export default function Reticle({
       document.documentElement.removeEventListener("pointerleave", onLeave);
       cancelAnimationFrame(raf);
     };
-  }, [focusTarget, frozen, onTargetChange, status]);
+  }, [focusTarget, frozen, onTargetChange, readAudioLevel, status]);
 
   return (
     <div

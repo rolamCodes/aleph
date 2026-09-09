@@ -313,6 +313,7 @@ export default function Canvas() {
           voice.status === "processing" ? processingTarget : undefined
         }
         onTargetChange={setPointedTarget}
+        readAudioLevel={voice.readAudioLevel}
         status={voice.status}
       />
       {saveError ? <div className="save-error">{saveError}</div> : null}
