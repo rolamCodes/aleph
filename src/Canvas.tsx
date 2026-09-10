@@ -16,7 +16,7 @@ import { api } from "../convex/_generated/api";
 import ContextNode from "./ContextNode";
 import InteractionEdge from "./InteractionEdge";
 import { inferPointedTargetFromGraphChange } from "./inferPointedTarget";
-import Reticle from "./Reticle";
+import Companion from "./Companion";
 import { usePushToTalk } from "./voice/usePushToTalk";
 import type {
   ContextNode as ContextNodeType,
@@ -303,7 +303,7 @@ export default function Canvas() {
       >
         <Background color="#303435" gap={20} size={2} />
       </ReactFlow>
-      <Reticle
+      <Companion
         frozen={
           voice.status === "processing" &&
           processingTarget.kind === "canvas" &&

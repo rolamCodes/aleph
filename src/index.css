@@ -74,10 +74,12 @@ body {
   cursor: none;
 }
 
+.companion {
+  pointer-events: none;
+}
+
+.companion-well,
 .reticle {
-  background: transparent;
-  border: 1.5px solid #3b9eff;
-  border-radius: 4px;
   box-sizing: border-box;
   height: 8px;
   left: 0;
@@ -92,6 +94,33 @@ body {
     height 180ms ease,
     border-radius 180ms ease;
   width: 8px;
+}
+
+.companion-well {
+  background: #1a1a1a;
+  border-radius: 4px;
+  overflow: visible;
+  padding: 2px;
+  z-index: 9999;
+}
+
+.companion-well--active {
+  border-radius: 50%;
+}
+
+.companion-orb {
+  background: #cdeeff;
+  border-radius: 50%;
+  box-shadow: 0 0 12px 4px #00aaff;
+  filter: blur(1px);
+  height: 100%;
+  width: 100%;
+}
+
+.reticle {
+  background: transparent;
+  border: 1.5px solid #3b9eff;
+  border-radius: 4px;
   z-index: 10000;
 }
 
