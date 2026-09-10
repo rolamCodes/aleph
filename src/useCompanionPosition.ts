@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, type RefObject } from "react";
 import type { PointedTarget } from "./types";
 
 const DISC_SIZE = 28;
@@ -177,11 +177,13 @@ function placeTargetReticle(reticle: HTMLElement, el: Element): void {
 }
 
 export function useCompanionPosition({
+  active,
   locked,
   freeze,
   focusTarget,
   onTargetChange,
 }: {
+  active: boolean;
   locked: boolean;
   freeze: boolean;
   focusTarget?: PointedTarget;
@@ -201,18 +203,18 @@ export function useCompanionPosition({
   const freezeRef = useRef(freeze);
   const focusTargetRef = useRef(focusTarget);
   const onTargetChangeRef = useRef(onTargetChange);
+  const updateRef = useRef<() => void>(() => {});
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     lockedRef.current = locked;
     freezeRef.current = freeze;
     focusTargetRef.current = focusTarget;
     onTargetChangeRef.current = onTargetChange;
+    updateRef.current();
   }, [locked, freeze, focusTarget, onTargetChange]);
 
   useEffect(() => {
-    const companion = companionRef.current;
-    const reticle = reticleRef.current;
-    if (!companion || !reticle) {
+    if (!active) {
       return;
     }
 
@@ -224,13 +226,22 @@ export function useCompanionPosition({
       }
     };
 
-    const setVisible = (visible: boolean) => {
+    const setVisible = (
+      companion: HTMLElement,
+      reticle: HTMLElement,
+      visible: boolean,
+    ) => {
       const opacity = visible ? "1" : "0";
       companion.style.opacity = opacity;
+      companion.style.pointerEvents = visible ? "auto" : "none";
       reticle.style.opacity = opacity;
     };
 
-    const applyDock = (el: Element) => {
+    const applyDock = (
+      companion: HTMLElement,
+      reticle: HTMLElement,
+      el: Element,
+    ) => {
       const pos = dockPosition(el);
       lastAnchorRef.current = pos;
       attachedRef.current = el;
@@ -238,12 +249,22 @@ export function useCompanionPosition({
       placeTargetReticle(reticle, el);
     };
 
-    const applyFreeAt = (pos: Point) => {
+    const applyFreeAt = (
+      companion: HTMLElement,
+      reticle: HTMLElement,
+      pos: Point,
+    ) => {
       placeCompanion(companion, pos);
       placeCircularReticle(reticle, pos);
     };
 
     const update = () => {
+      const companion = companionRef.current;
+      const reticle = reticleRef.current;
+      if (!companion || !reticle) {
+        return;
+      }
+
       const { x, y, inside } = pointerRef.current;
       const lockedNow = lockedRef.current;
       const freezeNow = freezeRef.current;
@@ -252,16 +273,14 @@ export function useCompanionPosition({
       if (!inside && !lockedNow) {
         frozenPositionRef.current = null;
         attachedRef.current = null;
-        setVisible(false);
+        setVisible(companion, reticle, false);
         reportTarget({ kind: "canvas" });
         return;
       }
 
-      setVisible(true);
+      setVisible(companion, reticle, true);
 
-      if (!lockedNow) {
-        frozenPositionRef.current = null;
-      } else if (!freezeNow) {
+      if (!lockedNow || !freezeNow) {
         frozenPositionRef.current = null;
       }
 
@@ -272,7 +291,7 @@ export function useCompanionPosition({
             lastAnchorRef.current ??
             freePosition(x, y);
         }
-        applyFreeAt(frozenPositionRef.current);
+        applyFreeAt(companion, reticle, frozenPositionRef.current);
         reportTarget(focus ?? { kind: "canvas" });
         return;
       }
@@ -285,7 +304,7 @@ export function useCompanionPosition({
             : null;
         const el = focused ?? fallback;
         if (el) {
-          applyDock(el);
+          applyDock(companion, reticle, el);
           reportTarget(pointedTargetFromElement(el));
           return;
         }
@@ -294,7 +313,7 @@ export function useCompanionPosition({
           frozenPositionRef.current ??
           stylePosition(companion) ??
           freePosition(x, y);
-        applyFreeAt(anchor);
+        applyFreeAt(companion, reticle, anchor);
         reportTarget(focus);
         return;
       }
@@ -302,7 +321,7 @@ export function useCompanionPosition({
       if (companionContains(x, y, companion)) {
         const attached = attachedRef.current;
         if (attached && document.contains(attached)) {
-          applyDock(attached);
+          applyDock(companion, reticle, attached);
           reportTarget(pointedTargetFromElement(attached));
           return;
         }
@@ -310,22 +329,24 @@ export function useCompanionPosition({
 
       const hit = pickHit(x, y);
       if (hit) {
-        applyDock(hit);
+        applyDock(companion, reticle, hit);
         reportTarget(pointedTargetFromElement(hit));
         return;
       }
 
       const attached = attachedRef.current;
       if (attached && stillAttached(attached, x, y, companion)) {
-        applyDock(attached);
+        applyDock(companion, reticle, attached);
         reportTarget(pointedTargetFromElement(attached));
         return;
       }
 
       attachedRef.current = null;
-      applyFreeAt(freePosition(x, y));
+      applyFreeAt(companion, reticle, freePosition(x, y));
       reportTarget({ kind: "canvas" });
     };
+
+    updateRef.current = update;
 
     const onMove = (event: PointerEvent) => {
       pointerRef.current = {
@@ -336,7 +357,10 @@ export function useCompanionPosition({
       update();
     };
 
-    const onLeave = () => {
+    const onLeave = (event: PointerEvent) => {
+      if (event.relatedTarget !== null) {
+        return;
+      }
       pointerRef.current.inside = false;
       if (!lockedRef.current) {
         attachedRef.current = null;
@@ -357,16 +381,17 @@ export function useCompanionPosition({
     };
 
     window.addEventListener("pointermove", onMove);
-    document.documentElement.addEventListener("pointerleave", onLeave);
+    window.addEventListener("pointerout", onLeave);
     update();
     raf = requestAnimationFrame(loop);
 
     return () => {
+      updateRef.current = () => {};
       window.removeEventListener("pointermove", onMove);
-      document.documentElement.removeEventListener("pointerleave", onLeave);
+      window.removeEventListener("pointerout", onLeave);
       cancelAnimationFrame(raf);
     };
-  }, []);
+  }, [active]);
 
   return { companionRef, reticleRef };
 }

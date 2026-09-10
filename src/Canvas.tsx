@@ -465,15 +465,18 @@ export default function Canvas() {
     },
     onListening: () => {
       const current = interactionRef.current;
-      if (current.mode === "preparing") {
-        setInteractionSync({ mode: "listening", target: current.target });
-      }
+      const target =
+        current.mode === "idle" || current.mode === "summary"
+          ? pointedTargetRef.current
+          : "target" in current
+            ? current.target
+            : pointedTargetRef.current;
+      setInteractionSync({ mode: "listening", target });
     },
     onWorking: () => {
       const current = interactionRef.current;
-      if (current.mode === "listening" || current.mode === "preparing") {
-        setInteractionSync({ mode: "working", target: current.target });
-      }
+      const target = "target" in current ? current.target : pointedTargetRef.current;
+      setInteractionSync({ mode: "working", target });
     },
     onIdle: setIdle,
     onError: (message) => {
@@ -495,6 +498,7 @@ export default function Canvas() {
     locked && (!visualTarget || visualTarget.kind === "canvas") && !reticleUnlocked;
 
   const { companionRef, reticleRef } = useCompanionPosition({
+    active: project !== undefined && project !== null,
     locked,
     freeze,
     focusTarget: visualTarget,
