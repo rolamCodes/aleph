@@ -81,7 +81,7 @@ body {
 .companion-well,
 .reticle {
   box-sizing: border-box;
-  height: 8px;
+  height: 12px;
   left: 0;
   opacity: 0;
   pointer-events: none;
@@ -93,7 +93,7 @@ body {
     width 180ms ease,
     height 180ms ease,
     border-radius 180ms ease;
-  width: 8px;
+  width: 12px;
 }
 
 .companion-well {
