@@ -1,10 +1,19 @@
-import { useEffect, useRef, useState } from "react";
-import type { PointedTarget, VoiceStatus } from "../types";
+import { useCallback, useEffect, useRef } from "react";
+import type { PointedTarget } from "../types";
+import { toUserFacingError } from "../companionActions";
 
 const MAX_RECORDING_MS = 30_000;
 const BUFFER_SIZE = 4096;
+const ANALYSER_FFT_SIZE = 1024;
+const MIN_DB = -55;
+const MAX_DB = -20;
+const ATTACK_MS = 50;
+const RELEASE_MS = 200;
+
+type CapturePhase = "idle" | "preparing" | "listening" | "processing";
 
 type ActiveCapture = {
+  analyser: AnalyserNode;
   audioContext: AudioContext;
   chunks: Float32Array[];
   processor: ScriptProcessorNode;
@@ -74,6 +83,7 @@ function releaseCapture(capture: ActiveCapture): void {
   clearTimeout(capture.timeout);
   capture.processor.onaudioprocess = null;
   capture.source.disconnect();
+  capture.analyser.disconnect();
   capture.processor.disconnect();
   capture.silentGain.disconnect();
   for (const track of capture.stream.getTracks()) {
@@ -82,57 +92,126 @@ function releaseCapture(capture: ActiveCapture): void {
   void capture.audioContext.close();
 }
 
+function createAmplitudeReader(analyser: AnalyserNode): () => number {
+  const samples = new Float32Array(analyser.fftSize);
+  let level = 0;
+  let last = performance.now();
+  return () => {
+    analyser.getFloatTimeDomainData(samples);
+    let sumSquares = 0;
+    for (const sample of samples) {
+      sumSquares += sample * sample;
+    }
+    const rms = Math.sqrt(sumSquares / samples.length);
+    const db = 20 * Math.log10(Math.max(rms, 1e-8));
+    const target = Math.min(1, Math.max(0, (db - MIN_DB) / (MAX_DB - MIN_DB)));
+    const now = performance.now();
+    const dt = Math.max(0, now - last);
+    last = now;
+    const tau = target > level ? ATTACK_MS : RELEASE_MS;
+    const alpha = 1 - Math.exp(-dt / Math.max(1, tau));
+    level += (target - level) * alpha;
+    return level;
+  };
+}
+
 export function usePushToTalk({
   pointedTarget,
+  isEnabled,
+  onPreparing,
+  onListening,
+  onWorking,
+  onIdle,
+  onError,
   onRecording,
 }: {
   pointedTarget: PointedTarget;
+  isEnabled: () => boolean;
+  onPreparing: (target: PointedTarget) => void;
+  onListening: () => void;
+  onWorking: () => void;
+  onIdle: () => void;
+  onError: (message: string) => void;
   onRecording: (audio: Blob, target: PointedTarget) => Promise<void>;
 }): {
-  error: string | null;
-  status: VoiceStatus;
+  cancelCapture: () => void;
+  readAmplitude: () => number;
 } {
-  const [status, setStatus] = useState<VoiceStatus>("idle");
-  const [error, setError] = useState<string | null>(null);
   const activeRef = useRef<ActiveCapture | null>(null);
   const mountedRef = useRef(true);
   const onRecordingRef = useRef(onRecording);
   const pointedTargetRef = useRef(pointedTarget);
+  const enabledRef = useRef(isEnabled);
   const pressedRef = useRef(false);
   const requestIdRef = useRef(0);
-  const statusRef = useRef<VoiceStatus>("idle");
+  const phaseRef = useRef<CapturePhase>("idle");
+  const readAmplitudeRef = useRef<() => number>(() => 0);
+  const onPreparingRef = useRef(onPreparing);
+  const onListeningRef = useRef(onListening);
+  const onWorkingRef = useRef(onWorking);
+  const onIdleRef = useRef(onIdle);
+  const onErrorRef = useRef(onError);
+  const cancelCaptureRef = useRef(() => {});
 
   useEffect(() => {
     onRecordingRef.current = onRecording;
     pointedTargetRef.current = pointedTarget;
-  }, [onRecording, pointedTarget]);
+    enabledRef.current = isEnabled;
+    onPreparingRef.current = onPreparing;
+    onListeningRef.current = onListening;
+    onWorkingRef.current = onWorking;
+    onIdleRef.current = onIdle;
+    onErrorRef.current = onError;
+  }, [
+    isEnabled,
+    onError,
+    onIdle,
+    onListening,
+    onPreparing,
+    onRecording,
+    onWorking,
+    pointedTarget,
+  ]);
 
   useEffect(() => {
     mountedRef.current = true;
 
-    const updateStatus = (nextStatus: VoiceStatus): void => {
-      statusRef.current = nextStatus;
-      if (mountedRef.current) {
-        setStatus(nextStatus);
-      }
+    const setPhase = (phase: CapturePhase): void => {
+      phaseRef.current = phase;
+    };
+
+    const clearAmplitude = (): void => {
+      readAmplitudeRef.current = () => 0;
     };
 
     const cancel = (): void => {
+      if (phaseRef.current === "processing") {
+        return;
+      }
       pressedRef.current = false;
       requestIdRef.current += 1;
+      clearAmplitude();
       const active = activeRef.current;
       activeRef.current = null;
       if (active) {
         releaseCapture(active);
       }
-      updateStatus("idle");
+      if (phaseRef.current !== "idle") {
+        setPhase("idle");
+        onIdleRef.current();
+      }
     };
 
     const fail = (reason: unknown): void => {
-      const message =
-        reason instanceof Error ? reason.message : "Voice command failed";
-      setError(message);
-      updateStatus("error");
+      pressedRef.current = false;
+      clearAmplitude();
+      const active = activeRef.current;
+      activeRef.current = null;
+      if (active) {
+        releaseCapture(active);
+      }
+      setPhase("idle");
+      onErrorRef.current(toUserFacingError(reason));
     };
 
     const finish = async (): Promise<void> => {
@@ -142,18 +221,22 @@ export function usePushToTalk({
       }
 
       activeRef.current = null;
+      clearAmplitude();
       const sampleRate = active.audioContext.sampleRate;
+      const target = active.target;
       releaseCapture(active);
       const audio = encodeWav(active.chunks, sampleRate);
       if (!audio) {
-        updateStatus("idle");
+        setPhase("idle");
+        onIdleRef.current();
         return;
       }
 
-      updateStatus("processing");
+      setPhase("processing");
+      onWorkingRef.current();
       try {
-        await onRecordingRef.current(audio, active.target);
-        updateStatus("idle");
+        await onRecordingRef.current(audio, target);
+        setPhase("idle");
       } catch (reason) {
         fail(reason);
       }
@@ -168,7 +251,8 @@ export function usePushToTalk({
       const requestId = requestIdRef.current + 1;
       requestIdRef.current = requestId;
       const target = pointedTargetRef.current;
-      updateStatus("listening");
+      setPhase("preparing");
+      onPreparingRef.current(target);
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -182,7 +266,6 @@ export function usePushToTalk({
           for (const track of stream.getTracks()) {
             track.stop();
           }
-          updateStatus("idle");
           return;
         }
 
@@ -197,19 +280,22 @@ export function usePushToTalk({
             track.stop();
           }
           await audioContext.close();
-          updateStatus("idle");
           return;
         }
         const source = audioContext.createMediaStreamSource(stream);
+        const analyser = audioContext.createAnalyser();
         const processor = audioContext.createScriptProcessor(BUFFER_SIZE, 1, 1);
         const silentGain = audioContext.createGain();
         const chunks: Float32Array[] = [];
 
+        analyser.fftSize = ANALYSER_FFT_SIZE;
+        analyser.smoothingTimeConstant = 0;
         silentGain.gain.value = 0;
         processor.onaudioprocess = (event) => {
           chunks.push(new Float32Array(event.inputBuffer.getChannelData(0)));
         };
-        source.connect(processor);
+        source.connect(analyser);
+        analyser.connect(processor);
         processor.connect(silentGain);
         silentGain.connect(audioContext.destination);
 
@@ -219,6 +305,7 @@ export function usePushToTalk({
         }, MAX_RECORDING_MS);
 
         activeRef.current = {
+          analyser,
           audioContext,
           chunks,
           processor,
@@ -228,7 +315,9 @@ export function usePushToTalk({
           target,
           timeout,
         };
-        updateStatus("listening");
+        readAmplitudeRef.current = createAmplitudeReader(analyser);
+        setPhase("listening");
+        onListeningRef.current();
       } catch (reason) {
         fail(reason);
       }
@@ -242,15 +331,15 @@ export function usePushToTalk({
         event.ctrlKey ||
         event.metaKey ||
         event.shiftKey ||
+        event.isComposing ||
         isEditableTarget(event.target) ||
-        (statusRef.current !== "idle" && statusRef.current !== "error")
+        !enabledRef.current()
       ) {
         return;
       }
 
       event.preventDefault();
       pressedRef.current = true;
-      setError(null);
       void start();
     };
 
@@ -263,24 +352,43 @@ export function usePushToTalk({
       pressedRef.current = false;
       if (!activeRef.current) {
         requestIdRef.current += 1;
-        updateStatus("idle");
+        if (phaseRef.current !== "processing") {
+          setPhase("idle");
+          onIdleRef.current();
+        }
         return;
       }
       void finish();
     };
 
+    const onBlur = (): void => {
+      if (phaseRef.current === "processing") {
+        pressedRef.current = false;
+        return;
+      }
+      cancel();
+    };
+
+    cancelCaptureRef.current = cancel;
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
-    window.addEventListener("blur", cancel);
+    window.addEventListener("blur", onBlur);
 
     return () => {
       mountedRef.current = false;
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
-      window.removeEventListener("blur", cancel);
-      cancel();
+      window.removeEventListener("blur", onBlur);
+      if (phaseRef.current !== "processing") {
+        cancel();
+      }
     };
   }, []);
 
-  return { error, status };
+  const readAmplitude = useCallback(() => readAmplitudeRef.current(), []);
+  const cancelCapture = useCallback(() => {
+    cancelCaptureRef.current();
+  }, []);
+
+  return { cancelCapture, readAmplitude };
 }

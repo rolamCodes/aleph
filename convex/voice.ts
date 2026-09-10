@@ -223,6 +223,112 @@ function errorMessage(reason: unknown): string {
   return reason instanceof Error ? reason.message : "Mutation failed";
 }
 
+const appliedCountsValidator = v.object({
+  contexts: v.number(),
+  components: v.number(),
+  elements: v.number(),
+  edges: v.number(),
+  updates: v.number(),
+  removals: v.number(),
+});
+
+const voiceResultValidator = v.object({
+  status: v.union(
+    v.literal("complete"),
+    v.literal("partial"),
+    v.literal("failed"),
+    v.literal("unknown"),
+  ),
+  applied: appliedCountsValidator,
+  message: v.optional(v.string()),
+});
+
+type VoiceRunResult = {
+  status: "complete" | "partial" | "failed" | "unknown";
+  applied: {
+    contexts: number;
+    components: number;
+    elements: number;
+    edges: number;
+    updates: number;
+    removals: number;
+  };
+  message?: string;
+};
+
+function emptyApplied(): VoiceRunResult["applied"] {
+  return {
+    contexts: 0,
+    components: 0,
+    elements: 0,
+    edges: 0,
+    updates: 0,
+    removals: 0,
+  };
+}
+
+function snapshotApplied(
+  applied: VoiceRunResult["applied"],
+): VoiceRunResult["applied"] {
+  return { ...applied };
+}
+
+function incrementApplied(
+  applied: VoiceRunResult["applied"],
+  op: string,
+): void {
+  switch (op) {
+    case "addContext":
+      applied.contexts += 1;
+      return;
+    case "addComponent":
+      applied.components += 1;
+      return;
+    case "addElement":
+      applied.elements += 1;
+      return;
+    case "addEdge":
+      applied.edges += 1;
+      return;
+    case "removeContext":
+    case "removeItem":
+    case "removeEdge":
+      applied.removals += 1;
+      return;
+    default:
+      applied.updates += 1;
+  }
+}
+
+function appliedTotal(applied: VoiceRunResult["applied"]): number {
+  return (
+    applied.contexts +
+    applied.components +
+    applied.elements +
+    applied.edges +
+    applied.updates +
+    applied.removals
+  );
+}
+
+function finishResult(
+  applied: VoiceRunResult["applied"],
+  unresolvedFailure: boolean,
+): VoiceRunResult {
+  const copy = snapshotApplied(applied);
+  if (!unresolvedFailure) {
+    return { status: "complete", applied: copy };
+  }
+  if (appliedTotal(copy) > 0) {
+    return { status: "partial", applied: copy };
+  }
+  return {
+    status: "failed",
+    applied: copy,
+    message: "The voice command could not be completed.",
+  };
+}
+
 export const run = action({
   args: {
     projectId: v.id("projects"),
@@ -230,13 +336,17 @@ export const run = action({
     target: pointedTargetValidator,
     layout: patchLayoutValidator,
   },
-  returns: v.null(),
+  returns: voiceResultValidator,
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
     let uploadVerified = false;
+    const applied = emptyApplied();
+    let unresolvedFailure = false;
+    let result: VoiceRunResult = finishResult(applied, true);
 
     try {
+      const identity = await ctx.auth.getUserIdentity();
+      if (!identity) throw new Error("Not authenticated");
+
       const input = await ctx.runQuery(internal.projects.getVoiceInput, {
         projectId: args.projectId,
         clerkId: identity.subject,
@@ -284,12 +394,15 @@ export const run = action({
 
       for (let step = 0; step < MAX_TOOL_STEPS; step += 1) {
         const call = requireOneCall(geminiResponse.functionCalls);
-        if (call.name === "finish") return null;
+        if (call.name === "finish") {
+          result = finishResult(applied, unresolvedFailure);
+          return result;
+        }
         if (!mutationToolNames.has(call.name)) {
           throw new Error(`Gemini called an unknown tool: ${call.name}`);
         }
 
-        let result: Record<string, unknown>;
+        let toolResult: Record<string, unknown>;
         try {
           const operation = parseGraphOperation({
             op: call.name,
@@ -301,13 +414,16 @@ export const run = action({
             operation,
             layout: args.layout,
           });
-          result = {
+          incrementApplied(applied, call.name);
+          unresolvedFailure = false;
+          toolResult = {
             ok: true,
             applied: call.name,
             graph: graphSnapshot(graph),
           };
         } catch (reason) {
-          result = {
+          unresolvedFailure = true;
+          toolResult = {
             ok: false,
             error: errorMessage(reason),
             graph: graphSnapshot(graph),
@@ -320,19 +436,29 @@ export const run = action({
               functionResponse: {
                 id: call.id,
                 name: call.name,
-                response: result,
+                response: toolResult,
               },
             },
           ],
         });
       }
       throw new Error(`Gemini exceeded ${MAX_TOOL_STEPS} mutation steps`);
+    } catch (reason) {
+      console.error(reason);
+      result = finishResult(applied, true);
+      return result;
     } finally {
-      if (uploadVerified) {
-        await ctx.runMutation(internal.projects.deleteVoiceAudio, {
-          storageId: args.storageId,
-        });
+      try {
+        if (uploadVerified) {
+          await ctx.runMutation(internal.projects.deleteVoiceAudio, {
+            storageId: args.storageId,
+          });
+        }
+      } catch (cleanupReason) {
+        console.error("Voice audio cleanup failed", cleanupReason);
       }
     }
+
+    return result;
   },
 });

@@ -26,5 +26,10 @@
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src"]
+  "include": [
+    "src",
+    "convex/lib/graphPatch.ts",
+    "convex/lib/graphTypes.ts",
+    "convex/lib/validators.ts"
+  ]
 }
