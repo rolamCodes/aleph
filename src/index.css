@@ -101,30 +101,13 @@ body {
 
 .reticle--listening,
 .reticle--processing {
-  --reticle-core-dash-array: 2 98;
-  --reticle-core-dash-offset: -61.5;
-  --reticle-core-opacity: 0.72;
-  --reticle-core-shoulder-dash-array: 4 96;
-  --reticle-core-shoulder-dash-offset: -60.5;
-  --reticle-core-shoulder-opacity: 0.52;
-  --reticle-core-shoulder-width: 1.8px;
-  --reticle-core-tail-dash-array: 6 94;
-  --reticle-core-tail-dash-offset: -59.5;
-  --reticle-core-tail-opacity: 0.36;
-  --reticle-core-tail-width: 1px;
-  --reticle-core-width: 2.8px;
-  --reticle-glow-width: 8px;
-  --reticle-halo-blur: 5px;
-  --reticle-halo-dash-array: 8 92;
-  --reticle-halo-dash-offset: -58.5;
-  --reticle-halo-opacity: 0.2;
-  --reticle-outer-blur: 14px;
-  --reticle-outer-dash-array: 17 83;
-  --reticle-outer-dash-offset: -54;
-  --reticle-outer-opacity: 0.08;
-  --reticle-outer-width: 24px;
+  --reticle-glow-blur: 4px;
+  --reticle-glow-opacity: 0.24;
   --reticle-glow: #55c8ff;
   --reticle-glow-hot: #eaf9ff;
+  --reticle-hotspot-dash-array: 1 999;
+  --reticle-hotspot-dash-offset: 0;
+  --reticle-hotspot-opacity: 0.68;
   border-color: #15b9ff;
 }
 
@@ -146,53 +129,22 @@ body {
 
 .reticle-glow rect {
   fill: none;
-  stroke-linecap: round;
+  stroke-dasharray: var(--reticle-hotspot-dash-array);
+  stroke-dashoffset: var(--reticle-hotspot-dash-offset);
+  stroke-linecap: butt;
+  stroke-width: 1.5px;
   vector-effect: non-scaling-stroke;
 }
 
-.reticle-glow__outer {
-  filter: blur(var(--reticle-outer-blur));
-  opacity: var(--reticle-outer-opacity);
-  stroke: var(--reticle-glow-hot);
-  stroke-dasharray: var(--reticle-outer-dash-array);
-  stroke-dashoffset: var(--reticle-outer-dash-offset);
-  stroke-width: var(--reticle-outer-width);
-}
-
-.reticle-glow__halo {
-  filter: blur(var(--reticle-halo-blur));
-  opacity: var(--reticle-halo-opacity);
+.reticle-glow__blur {
+  filter: blur(var(--reticle-glow-blur));
+  opacity: var(--reticle-glow-opacity);
   stroke: var(--reticle-glow);
-  stroke-dasharray: var(--reticle-halo-dash-array);
-  stroke-dashoffset: var(--reticle-halo-dash-offset);
-  stroke-width: var(--reticle-glow-width);
 }
 
-.reticle-glow__core-tail {
-  filter: drop-shadow(0 0 5px var(--reticle-glow));
-  opacity: var(--reticle-core-tail-opacity);
-  stroke: #70d7ff;
-  stroke-dasharray: var(--reticle-core-tail-dash-array);
-  stroke-dashoffset: var(--reticle-core-tail-dash-offset);
-  stroke-width: var(--reticle-core-tail-width);
-}
-
-.reticle-glow__core-shoulder {
-  filter: drop-shadow(0 0 4px var(--reticle-glow-hot));
-  opacity: var(--reticle-core-shoulder-opacity);
-  stroke: #bceeff;
-  stroke-dasharray: var(--reticle-core-shoulder-dash-array);
-  stroke-dashoffset: var(--reticle-core-shoulder-dash-offset);
-  stroke-width: var(--reticle-core-shoulder-width);
-}
-
-.reticle-glow__core {
-  filter: drop-shadow(0 0 3px var(--reticle-glow-hot));
-  opacity: var(--reticle-core-opacity);
-  stroke: #f5fcff;
-  stroke-dasharray: var(--reticle-core-dash-array);
-  stroke-dashoffset: var(--reticle-core-dash-offset);
-  stroke-width: var(--reticle-core-width);
+.reticle-glow__hotspot {
+  opacity: var(--reticle-hotspot-opacity);
+  stroke: var(--reticle-glow-hot);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -139,11 +139,14 @@ export default function Reticle({
   const pointerRef = useRef({ x: 0, y: 0, inside: false });
   const frozenPositionRef = useRef<{ x: number; y: number } | null>(null);
   const glowAngleRef = useRef(0);
-  const glowVelocityRef = useRef(0);
-  const glowBottomRef = useRef(62.5);
+  const processingElapsedRef = useRef(0);
+  const glowMetricsRef = useRef({
+    bottomPosition: 0,
+    perimeter: 1,
+    width: ACTIVE_IDLE_SIZE,
+  });
   const glowGeometryRef = useRef("");
   const glowLevelRef = useRef(0);
-  const glowPeakRef = useRef(0);
   const targetKeyRef = useRef("canvas");
 
   useEffect(() => {
@@ -172,12 +175,12 @@ export default function Reticle({
 
       glowGeometryRef.current = geometryKey;
       svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-      const inset = 2;
+      const inset = 0.75;
       const rectWidth = Math.max(1, width - inset * 2);
       const rectHeight = Math.max(1, height - inset * 2);
       const radius = circular
         ? Math.max(0, Math.min(rectWidth, rectHeight) / 2)
-        : 3;
+        : Math.min(3.25, rectWidth / 2, rectHeight / 2);
       for (const rect of svg.querySelectorAll("rect")) {
         rect.setAttribute("x", `${inset}`);
         rect.setAttribute("y", `${inset}`);
@@ -185,10 +188,15 @@ export default function Reticle({
         rect.setAttribute("height", `${rectHeight}`);
         rect.setAttribute("rx", `${radius}`);
       }
-      glowBottomRef.current =
-        ((rectWidth * 1.5 + rectHeight) /
-          (2 * (rectWidth + rectHeight))) *
-        100;
+      const horizontal = Math.max(0, rectWidth - radius * 2);
+      const vertical = Math.max(0, rectHeight - radius * 2);
+      glowMetricsRef.current = {
+        bottomPosition:
+          horizontal * 1.5 + vertical + Math.PI * radius,
+        perimeter:
+          horizontal * 2 + vertical * 2 + Math.PI * radius * 2,
+        width,
+      };
     };
 
     const applyIdle = (x: number, y: number) => {
@@ -296,13 +304,17 @@ export default function Reticle({
     let raf = 0;
     let previousFrame = performance.now();
     let meterSamples = new Float32Array(1024);
-    const setDash = (name: string, length: number, position: number) => {
+    const setDash = (
+      length: number,
+      position: number,
+      perimeter: number,
+    ) => {
       node.style.setProperty(
-        `--reticle-${name}-dash-array`,
-        `${length} ${100 - length}`,
+        "--reticle-hotspot-dash-array",
+        `${length} ${Math.max(0.1, perimeter - length)}`,
       );
       node.style.setProperty(
-        `--reticle-${name}-dash-offset`,
+        "--reticle-hotspot-dash-offset",
         `${length / 2 - position}`,
       );
     };
@@ -311,11 +323,9 @@ export default function Reticle({
       previousFrame = frame;
 
       const processingPulse =
-        status === "processing" ? Math.sin(frame / 720) * 0.055 : 0;
+        status === "processing" ? Math.sin(frame / 520) * 0.07 : 0;
       let targetGlowLevel =
-        status === "processing" ? 0.62 + processingPulse : 0;
-      let targetPeakLevel =
-        status === "processing" ? 0.72 + processingPulse : 0;
+        status === "processing" ? 0.68 + processingPulse : 0;
       const analyser = analyserRef.current;
       if (status === "listening" && analyser) {
         if (meterSamples.length !== analyser.fftSize) {
@@ -339,7 +349,6 @@ export default function Reticle({
           0.72,
         );
         targetGlowLevel = Math.min(1, Math.max(rmsLevel, peakLevel * 0.45));
-        targetPeakLevel = Math.min(1, Math.max(peakLevel, rmsLevel * 0.65));
       }
       const response =
         1 -
@@ -347,82 +356,38 @@ export default function Reticle({
           -elapsed /
             (targetGlowLevel > glowLevelRef.current ? 36 : 190),
         );
-      const peakResponse =
-        1 -
-        Math.exp(
-          -elapsed /
-            (targetPeakLevel > glowPeakRef.current ? 22 : 125),
-        );
       glowLevelRef.current +=
         (targetGlowLevel - glowLevelRef.current) * response;
-      glowPeakRef.current +=
-        (targetPeakLevel - glowPeakRef.current) * peakResponse;
 
       if (status === "processing" && !reduceMotion) {
-        const velocityResponse = 1 - Math.exp(-elapsed / 420);
-        glowVelocityRef.current +=
-          (0.1 - glowVelocityRef.current) * velocityResponse;
+        processingElapsedRef.current += elapsed;
+        const progress = Math.min(1, processingElapsedRef.current / 750);
+        const easedSpeed = Math.pow(progress, 3) * 0.2;
         glowAngleRef.current =
-          (glowAngleRef.current + elapsed * glowVelocityRef.current) % 360;
+          (glowAngleRef.current + elapsed * easedSpeed) % 360;
       } else {
         glowAngleRef.current = 0;
-        glowVelocityRef.current = 0;
+        processingElapsedRef.current = 0;
       }
 
+      const { bottomPosition, perimeter, width } = glowMetricsRef.current;
       const glowPosition =
-        glowBottomRef.current + (glowAngleRef.current / 360) * 100;
-      setDash("outer", 17 + glowLevelRef.current * 9, glowPosition);
-      setDash("halo", 8 + glowLevelRef.current * 8, glowPosition);
-      setDash("core-tail", 6 + glowPeakRef.current * 6, glowPosition);
-      setDash("core-shoulder", 4 + glowPeakRef.current * 5, glowPosition);
-      setDash("core", 2 + glowPeakRef.current * 3, glowPosition);
+        bottomPosition + (glowAngleRef.current / 360) * perimeter;
+      const maximumHotspotLength = Math.max(1, width * 0.3);
+      const hotspotLength =
+        1 + glowLevelRef.current * (maximumHotspotLength - 1);
+      setDash(hotspotLength, glowPosition, perimeter);
       node.style.setProperty(
-        "--reticle-outer-opacity",
-        `${0.08 + glowLevelRef.current * 0.42}`,
+        "--reticle-hotspot-opacity",
+        `${0.68 + glowLevelRef.current * 0.32}`,
       );
       node.style.setProperty(
-        "--reticle-halo-opacity",
-        `${0.2 + glowLevelRef.current * 0.72}`,
+        "--reticle-glow-opacity",
+        `${0.24 + glowLevelRef.current * 0.66}`,
       );
       node.style.setProperty(
-        "--reticle-core-tail-opacity",
-        `${0.36 + glowPeakRef.current * 0.34}`,
-      );
-      node.style.setProperty(
-        "--reticle-core-shoulder-opacity",
-        `${0.52 + glowPeakRef.current * 0.38}`,
-      );
-      node.style.setProperty(
-        "--reticle-core-opacity",
-        `${0.72 + glowPeakRef.current * 0.28}`,
-      );
-      node.style.setProperty(
-        "--reticle-glow-width",
-        `${8 + glowLevelRef.current * 30}px`,
-      );
-      node.style.setProperty(
-        "--reticle-outer-width",
-        `${24 + glowLevelRef.current * 58}px`,
-      );
-      node.style.setProperty(
-        "--reticle-halo-blur",
-        `${5 + glowLevelRef.current * 9}px`,
-      );
-      node.style.setProperty(
-        "--reticle-outer-blur",
-        `${14 + glowLevelRef.current * 22}px`,
-      );
-      node.style.setProperty(
-        "--reticle-core-tail-width",
-        `${1 + glowPeakRef.current}px`,
-      );
-      node.style.setProperty(
-        "--reticle-core-shoulder-width",
-        `${1.8 + glowPeakRef.current * 2.7}px`,
-      );
-      node.style.setProperty(
-        "--reticle-core-width",
-        `${2.8 + glowPeakRef.current * 3.7}px`,
+        "--reticle-glow-blur",
+        `${4 + glowLevelRef.current * 14}px`,
       );
 
       if (
@@ -459,11 +424,8 @@ export default function Reticle({
         className="reticle-glow"
         preserveAspectRatio="none"
       >
-        <rect pathLength="100" className="reticle-glow__outer" />
-        <rect pathLength="100" className="reticle-glow__halo" />
-        <rect pathLength="100" className="reticle-glow__core-tail" />
-        <rect pathLength="100" className="reticle-glow__core-shoulder" />
-        <rect pathLength="100" className="reticle-glow__core" />
+        <rect className="reticle-glow__blur" />
+        <rect className="reticle-glow__hotspot" />
       </svg>
     </div>
   );
