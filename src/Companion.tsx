@@ -1,10 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { PointedTarget, VoiceStatus } from "./types";
-import {
-  DEFAULT_ORB_REACT,
-  smoothOrbReact,
-  type OrbReact,
-} from "./voice/orbSpectrum";
+import type { OrbReact } from "./voice/orbEnvelope";
 
 const CURSOR_OFFSET = 12;
 const ATTACHMENT_RADIUS = 80;
@@ -137,12 +133,15 @@ function elementForTarget(target: PointedTarget): Element | null {
 }
 
 function applyOrbReact(orb: HTMLElement, react: OrbReact) {
+  orb.style.transform = `scale(${react.scale})`;
   orb.style.filter = `blur(${react.blur}px)`;
   orb.style.boxShadow =
-    `0 0 ${react.glowBlur}px ${react.glowSpread}px hsl(200, 100%, 50%)`;
+    `0 0 ${react.glowBlur}px ${react.glowSpread}px ` +
+    `hsl(200 100% 50% / ${react.glowOpacity})`;
 }
 
 function resetOrb(orb: HTMLElement) {
+  orb.style.removeProperty("transform");
   orb.style.removeProperty("filter");
   orb.style.removeProperty("box-shadow");
 }
@@ -323,13 +322,11 @@ export default function Companion({
     }
 
     let raf = 0;
-    let smoothed = { ...DEFAULT_ORB_REACT };
 
     const tick = () => {
       const sample = readOrbReact();
       if (sample) {
-        smoothed = smoothOrbReact(smoothed, sample);
-        applyOrbReact(orb, smoothed);
+        applyOrbReact(orb, sample);
       }
       raf = requestAnimationFrame(tick);
     };

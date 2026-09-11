@@ -2,26 +2,26 @@ import { useEffect, useRef, useState } from "react";
 import type { PointedTarget, VoiceStatus } from "../types";
 import {
   computeOrbReact,
-  createOrbSpectrumState,
+  createOrbEnvelopeState,
+  type OrbEnvelopeState,
   type OrbReact,
-  type OrbSpectrumState,
-} from "./orbSpectrum";
+} from "./orbEnvelope";
 
 const MAX_RECORDING_MS = 30_000;
 const BUFFER_SIZE = 4096;
-const ANALYSER_FFT_SIZE = 256;
+const ANALYSER_FFT_SIZE = 1024;
 
 type ActiveCapture = {
   analyser: AnalyserNode;
   audioContext: AudioContext;
   chunks: Float32Array[];
-  frequencyData: Uint8Array;
+  envelopeState: OrbEnvelopeState;
   processor: ScriptProcessorNode;
   silentGain: GainNode;
   source: MediaStreamAudioSourceNode;
-  spectrumState: OrbSpectrumState;
   stream: MediaStream;
   target: PointedTarget;
+  timeData: Float32Array;
   timeout: ReturnType<typeof setTimeout>;
 };
 
@@ -120,10 +120,10 @@ export function usePushToTalk({
       return null;
     }
 
-    active.analyser.getByteFrequencyData(
-      active.frequencyData as Uint8Array<ArrayBuffer>,
+    active.analyser.getFloatTimeDomainData(
+      active.timeData as Float32Array<ArrayBuffer>,
     );
-    return computeOrbReact(active.frequencyData, active.spectrumState);
+    return computeOrbReact(active.timeData, active.envelopeState);
   };
 
   useEffect(() => {
@@ -196,7 +196,11 @@ export function usePushToTalk({
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
+          audio: {
+            autoGainControl: true,
+            echoCancellation: true,
+            noiseSuppression: true,
+          },
         });
         if (
           !mountedRef.current ||
@@ -227,11 +231,10 @@ export function usePushToTalk({
         const source = audioContext.createMediaStreamSource(stream);
         const analyser = audioContext.createAnalyser();
         analyser.fftSize = ANALYSER_FFT_SIZE;
-        analyser.smoothingTimeConstant = 0.25;
         const processor = audioContext.createScriptProcessor(BUFFER_SIZE, 1, 1);
         const silentGain = audioContext.createGain();
         const chunks: Float32Array[] = [];
-        const frequencyData = new Uint8Array(analyser.frequencyBinCount);
+        const timeData = new Float32Array(analyser.fftSize);
 
         silentGain.gain.value = 0;
         processor.onaudioprocess = (event) => {
@@ -251,13 +254,13 @@ export function usePushToTalk({
           analyser,
           audioContext,
           chunks,
-          frequencyData,
+          envelopeState: createOrbEnvelopeState(),
           processor,
           silentGain,
           source,
-          spectrumState: createOrbSpectrumState(analyser.frequencyBinCount),
           stream,
           target,
+          timeData,
           timeout,
         };
         updateStatus("listening");

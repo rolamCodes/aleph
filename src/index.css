@@ -110,13 +110,16 @@ body {
   filter: blur(1px);
   height: 12px;
   transition:
+    transform 180ms ease,
     filter 180ms ease,
     box-shadow 180ms ease;
+  transform-origin: center;
   width: 12px;
 }
 
 .companion-orb--listening {
   transition: none;
+  will-change: transform, filter, box-shadow;
 }
 
 .reticle {
