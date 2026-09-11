@@ -1,5 +1,10 @@
 import { useEffect, useRef } from "react";
 import type { PointedTarget, VoiceStatus } from "./types";
+import {
+  DEFAULT_ORB_REACT,
+  smoothOrbReact,
+  type OrbReact,
+} from "./voice/orbSpectrum";
 
 const CURSOR_OFFSET = 12;
 const ATTACHMENT_RADIUS = 80;
@@ -131,19 +136,38 @@ function elementForTarget(target: PointedTarget): Element | null {
   return null;
 }
 
+function applyOrbReact(orb: HTMLElement, react: OrbReact) {
+  orb.style.width = `${react.size}px`;
+  orb.style.height = `${react.size}px`;
+  orb.style.filter = `blur(${react.blur}px)`;
+  orb.style.background = `hsl(${react.hue}, 100%, 85%)`;
+  orb.style.boxShadow = `0 0 12px 4px hsl(${react.hue}, 100%, 50%)`;
+}
+
+function resetOrb(orb: HTMLElement) {
+  orb.style.removeProperty("width");
+  orb.style.removeProperty("height");
+  orb.style.removeProperty("filter");
+  orb.style.removeProperty("background");
+  orb.style.removeProperty("box-shadow");
+}
+
 export default function Companion({
   focusTarget,
   frozen = false,
   onTargetChange,
+  readOrbReact,
   status,
 }: {
   focusTarget?: PointedTarget;
   frozen?: boolean;
   onTargetChange: (target: PointedTarget) => void;
+  readOrbReact: () => OrbReact | null;
   status: VoiceStatus;
 }) {
   const reticleRef = useRef<HTMLDivElement>(null);
   const wellRef = useRef<HTMLDivElement>(null);
+  const orbRef = useRef<HTMLDivElement>(null);
   const attachedRef = useRef<Element | null>(null);
   const pointerRef = useRef({ x: 0, y: 0, inside: false });
   const frozenPositionRef = useRef<{ x: number; y: number } | null>(null);
@@ -294,10 +318,41 @@ export default function Companion({
     };
   }, [focusTarget, frozen, onTargetChange, status]);
 
+  useEffect(() => {
+    const orb = orbRef.current;
+    if (!orb || status !== "listening") {
+      if (orb) {
+        resetOrb(orb);
+      }
+      return;
+    }
+
+    let raf = 0;
+    let smoothed = { ...DEFAULT_ORB_REACT };
+
+    const tick = () => {
+      const sample = readOrbReact();
+      if (sample) {
+        smoothed = smoothOrbReact(smoothed, sample, 0.35);
+        applyOrbReact(orb, smoothed);
+      }
+      raf = requestAnimationFrame(tick);
+    };
+
+    raf = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(raf);
+      resetOrb(orb);
+    };
+  }, [readOrbReact, status]);
+
   return (
     <div className="companion" aria-hidden="true">
       <div ref={wellRef} className="companion-well">
-        <div className="companion-orb" />
+        <div
+          ref={orbRef}
+          className={`companion-orb${status === "listening" ? " companion-orb--listening" : ""}`}
+        />
       </div>
       <div ref={reticleRef} className="reticle" />
     </div>

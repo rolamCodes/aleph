@@ -111,8 +111,15 @@ body {
   height: 12px;
   transition:
     width 180ms ease,
-    height 180ms ease;
+    height 180ms ease,
+    filter 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease;
   width: 12px;
+}
+
+.companion-orb--listening {
+  transition: none;
 }
 
 .reticle {
