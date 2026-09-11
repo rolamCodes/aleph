@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { PointedTarget, VoiceStatus } from "../types";
-import { computeOrbReact, type OrbReact } from "./orbSpectrum";
+import {
+  computeOrbReact,
+  createOrbSpectrumState,
+  type OrbReact,
+  type OrbSpectrumState,
+} from "./orbSpectrum";
 
 const MAX_RECORDING_MS = 30_000;
 const BUFFER_SIZE = 4096;
@@ -14,6 +19,7 @@ type ActiveCapture = {
   processor: ScriptProcessorNode;
   silentGain: GainNode;
   source: MediaStreamAudioSourceNode;
+  spectrumState: OrbSpectrumState;
   stream: MediaStream;
   target: PointedTarget;
   timeout: ReturnType<typeof setTimeout>;
@@ -117,7 +123,7 @@ export function usePushToTalk({
     active.analyser.getByteFrequencyData(
       active.frequencyData as Uint8Array<ArrayBuffer>,
     );
-    return computeOrbReact(active.frequencyData);
+    return computeOrbReact(active.frequencyData, active.spectrumState);
   };
 
   useEffect(() => {
@@ -221,7 +227,7 @@ export function usePushToTalk({
         const source = audioContext.createMediaStreamSource(stream);
         const analyser = audioContext.createAnalyser();
         analyser.fftSize = ANALYSER_FFT_SIZE;
-        analyser.smoothingTimeConstant = 0.45;
+        analyser.smoothingTimeConstant = 0.25;
         const processor = audioContext.createScriptProcessor(BUFFER_SIZE, 1, 1);
         const silentGain = audioContext.createGain();
         const chunks: Float32Array[] = [];
@@ -249,6 +255,7 @@ export function usePushToTalk({
           processor,
           silentGain,
           source,
+          spectrumState: createOrbSpectrumState(analyser.frequencyBinCount),
           stream,
           target,
           timeout,

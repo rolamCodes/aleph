@@ -329,7 +329,7 @@ export default function Companion({
     const tick = () => {
       const sample = readOrbReact();
       if (sample) {
-        smoothed = smoothOrbReact(smoothed, sample, 0.55);
+        smoothed = smoothOrbReact(smoothed, sample);
         applyOrbReact(orb, smoothed);
       }
       raf = requestAnimationFrame(tick);
