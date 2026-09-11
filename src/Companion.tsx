@@ -168,24 +168,33 @@ export default function Companion({
       well.style.opacity = opacity;
     };
 
-    const hugWell = () => {
+    const snapToWell = () => {
+      reticle.classList.add("reticle--snapped");
+      reticle.classList.add("reticle--on-well");
+      reticle.classList.toggle("reticle--active-idle", active);
       setBox(reticle, boxFromElement(well, 0));
     };
 
     const applyIdle = (x: number, y: number) => {
       well.classList.toggle("companion-well--active", active);
-      setPosition(
-        well,
-        x - CURSOR_OFFSET - well.offsetWidth,
-        y - CURSOR_OFFSET - well.offsetHeight,
-      );
-      reticle.classList.remove("reticle--snapped");
-      reticle.classList.toggle("reticle--active-idle", active);
-      hugWell();
+      const width = well.offsetWidth;
+      const height = well.offsetHeight;
+      const left = x - CURSOR_OFFSET - width;
+      const top = y - CURSOR_OFFSET - height;
+      if (well.style.left !== "" && well.style.top !== "") {
+        snapToWell();
+      } else {
+        reticle.classList.add("reticle--snapped");
+        reticle.classList.add("reticle--on-well");
+        reticle.classList.toggle("reticle--active-idle", active);
+        setBox(reticle, { left, top, width, height });
+      }
+      setPosition(well, left, top);
     };
 
     const applySnap = (focus: Box) => {
       reticle.classList.add("reticle--snapped");
+      reticle.classList.remove("reticle--on-well");
       reticle.classList.remove("reticle--active-idle");
       setBox(reticle, focus);
       well.classList.toggle("companion-well--active", active);

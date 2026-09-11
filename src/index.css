@@ -140,6 +140,10 @@ body {
     border-radius 180ms ease;
 }
 
+.reticle--on-well {
+  transition: border-radius 180ms ease;
+}
+
 .reticle--active-idle {
   border-radius: 50%;
 }
