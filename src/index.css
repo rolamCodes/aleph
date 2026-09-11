@@ -90,10 +90,10 @@ body {
 
 .companion-well {
   background: #1a1a1a;
-  border-radius: 4px;
+  border-radius: 10px;
   height: fit-content;
   overflow: visible;
-  padding: 2px;
+  padding: 4px;
   transition:
     left 220ms cubic-bezier(0.22, 1.15, 0.36, 1),
     top 220ms cubic-bezier(0.22, 1.15, 0.36, 1),
@@ -109,14 +109,14 @@ body {
 .companion-orb {
   background: #cdeeff;
   border-radius: 50%;
-  box-shadow: 0 0 12px 4px #00aaff;
+  box-shadow: 0 0 12px 4px hsl(200, 100%, 50%);
   display: block;
   filter: blur(1px);
-  height: 8px;
+  height: 12px;
   transition:
     width 180ms ease,
     height 180ms ease;
-  width: 8px;
+  width: 12px;
 }
 
 .companion-well--active .companion-orb {
@@ -126,8 +126,8 @@ body {
 
 .reticle {
   background: transparent;
-  border: 1.5px solid #3b9eff;
-  border-radius: 4px;
+  border: 1px solid #3b9eff;
+  border-radius: 10px;
   z-index: 10000;
 }
 
