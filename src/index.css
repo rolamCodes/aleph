@@ -135,14 +135,6 @@ body {
   transition: border-radius 180ms ease;
 }
 
-.reticle--processing {
-  border-color: #f3bd42;
-}
-
-.reticle--error {
-  border-color: #ff5f57;
-}
-
 .react-flow {
   --xy-background-color: #020303;
   --xy-edge-stroke: #f2f2f2;

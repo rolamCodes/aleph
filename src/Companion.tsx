@@ -299,7 +299,7 @@ export default function Companion({
       <div ref={wellRef} className="companion-well">
         <div className="companion-orb" />
       </div>
-      <div ref={reticleRef} className={`reticle reticle--${status}`} />
+      <div ref={reticleRef} className="reticle" />
     </div>
   );
 }
