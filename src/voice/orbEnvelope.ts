@@ -3,6 +3,7 @@ export type OrbReact = {
   glowBlur: number;
   glowOpacity: number;
   glowSpread: number;
+  hue: number;
   scale: number;
 };
 
@@ -10,6 +11,7 @@ export type OrbEnvelopeState = {
   calibrationFrames: number;
   calibrationLevels: number[];
   ceiling: number;
+  colorEnvelope: number;
   envelope: number;
   gateOpen: boolean;
   loudFrames: number;
@@ -20,6 +22,7 @@ export type OrbEnvelopeState = {
 const CALIBRATION_FRAMES = 24;
 const GATE_OPEN_FRAMES = 3;
 const GATE_HOLD_FRAMES = 12;
+const RESTING_ENVELOPE = (1 - 0.65) / 1.35;
 
 function rootMeanSquare(data: Float32Array<ArrayBufferLike>): number {
   let mean = 0;
@@ -41,11 +44,23 @@ export function createOrbEnvelopeState(): OrbEnvelopeState {
     calibrationFrames: 0,
     calibrationLevels: [],
     ceiling: 0.05,
-    envelope: 0,
+    colorEnvelope: 0,
+    envelope: RESTING_ENVELOPE,
     gateOpen: false,
     loudFrames: 0,
     noiseFloor: 0,
     quietFrames: 0,
+  };
+}
+
+function orbReactFromState(state: OrbEnvelopeState): OrbReact {
+  return {
+    blur: 1 + state.envelope * 0.75,
+    glowBlur: 4 + state.envelope * 16,
+    glowOpacity: 0.45 + state.envelope * 0.55,
+    glowSpread: state.envelope * 6,
+    hue: 200 + state.colorEnvelope * 65,
+    scale: 0.65 + state.envelope * 1.35,
   };
 }
 
@@ -58,6 +73,7 @@ export function computeOrbReact(
   if (state.calibrationFrames < CALIBRATION_FRAMES) {
     state.calibrationLevels.push(loudness);
     state.calibrationFrames += 1;
+    state.envelope *= 0.88;
     if (state.calibrationFrames === CALIBRATION_FRAMES) {
       const levels = [...state.calibrationLevels].sort(
         (left, right) => left - right,
@@ -65,7 +81,7 @@ export function computeOrbReact(
       state.noiseFloor =
         levels[Math.floor(levels.length * 0.25)] ?? loudness;
     }
-    return DEFAULT_ORB_REACT;
+    return orbReactFromState(state);
   }
 
   const openThreshold = Math.max(0.015, state.noiseFloor * 2.5 + 0.004);
@@ -107,20 +123,10 @@ export function computeOrbReact(
   const compressed = rawActivity * rawActivity * (3 - 2 * rawActivity);
   const envelopeFactor = compressed > state.envelope ? 0.35 : 0.08;
   state.envelope += (compressed - state.envelope) * envelopeFactor;
+  const colorFactor =
+    state.envelope > state.colorEnvelope ? 0.025 : 0.015;
+  state.colorEnvelope +=
+    (state.envelope - state.colorEnvelope) * colorFactor;
 
-  return {
-    blur: 1 + state.envelope * 0.75,
-    glowBlur: 4 + state.envelope * 16,
-    glowOpacity: 0.45 + state.envelope * 0.55,
-    glowSpread: state.envelope * 6,
-    scale: 0.65 + state.envelope * 1.35,
-  };
+  return orbReactFromState(state);
 }
-
-export const DEFAULT_ORB_REACT: OrbReact = {
-  blur: 1,
-  glowBlur: 4,
-  glowOpacity: 0.45,
-  glowSpread: 0,
-  scale: 0.65,
-};

@@ -112,6 +112,7 @@ body {
   transition:
     transform 180ms ease,
     filter 180ms ease,
+    background 180ms ease,
     box-shadow 180ms ease;
   transform-origin: center;
   width: 12px;
@@ -119,7 +120,7 @@ body {
 
 .companion-orb--listening {
   transition: none;
-  will-change: transform, filter, box-shadow;
+  will-change: transform, filter, background, box-shadow;
 }
 
 .reticle {
