@@ -5,29 +5,24 @@ export type OrbReact = {
 };
 
 export type OrbSpectrumState = {
+  activity: number;
   calibrationFrames: number;
   ceiling: number;
+  gateOpen: boolean;
+  loudFrames: number;
   noiseFloor: Float32Array;
+  quietFrames: number;
 };
 
 const VOICE_BIN_END = 48;
-const CALIBRATION_FRAMES = 8;
-
-function bandEnergy(
-  data: Uint8Array<ArrayBufferLike>,
-  start: number,
-  end: number,
-): number {
-  let sum = 0;
-  const count = Math.min(end, data.length) - start;
-  if (count <= 0) {
-    return 0;
-  }
-  for (let index = start; index < end && index < data.length; index += 1) {
-    sum += data[index] ?? 0;
-  }
-  return sum / (count * 255);
-}
+const AIR_BIN_START = 39;
+const AIR_BIN_END = 96;
+const CALIBRATION_FRAMES = 18;
+const GATE_OPEN_ENERGY = 0.045;
+const GATE_CLOSE_ENERGY = 0.025;
+const GATE_OPEN_FRAMES = 2;
+const GATE_HOLD_FRAMES = 10;
+const NOISE_MARGIN = 0.022;
 
 function voiceWeight(index: number): number {
   if (index < 5) return 0.65;
@@ -38,9 +33,13 @@ function voiceWeight(index: number): number {
 
 export function createOrbSpectrumState(binCount: number): OrbSpectrumState {
   return {
+    activity: 0,
     calibrationFrames: 0,
-    ceiling: 0.04,
+    ceiling: 0.065,
+    gateOpen: false,
+    loudFrames: 0,
     noiseFloor: new Float32Array(binCount),
+    quietFrames: 0,
   };
 }
 
@@ -48,13 +47,12 @@ export function computeOrbReact(
   data: Uint8Array<ArrayBufferLike>,
   state: OrbSpectrumState,
 ): OrbReact {
-  const air = bandEnergy(data, 39, 96);
-
+  let airEnergy = 0;
+  let airBins = 0;
   let weightedEnergy = 0;
   let totalWeight = 0;
-  const end = Math.min(VOICE_BIN_END, data.length);
 
-  for (let index = 1; index < end; index += 1) {
+  for (let index = 1; index < data.length; index += 1) {
     const value = (data[index] ?? 0) / 255;
     const floor = state.noiseFloor[index] ?? 0;
 
@@ -70,12 +68,20 @@ export function computeOrbReact(
       state.noiseFloor[index] = floor + (value - floor) * 0.08;
     } else if (value < floor + 0.035) {
       state.noiseFloor[index] = floor + (value - floor) * 0.008;
+    } else if (!state.gateOpen) {
+      state.noiseFloor[index] = floor + (value - floor) * 0.002;
     }
 
-    const excess = Math.max(0, value - floor - 0.018);
-    const weight = voiceWeight(index);
-    weightedEnergy += excess * excess * weight;
-    totalWeight += weight;
+    const excess = Math.max(0, value - floor - NOISE_MARGIN);
+    if (index < VOICE_BIN_END) {
+      const weight = voiceWeight(index);
+      weightedEnergy += excess * excess * weight;
+      totalWeight += weight;
+    }
+    if (index >= AIR_BIN_START && index < AIR_BIN_END) {
+      airEnergy += excess * excess;
+      airBins += 1;
+    }
   }
 
   if (state.calibrationFrames < CALIBRATION_FRAMES) {
@@ -84,14 +90,38 @@ export function computeOrbReact(
   }
 
   const energy = Math.sqrt(weightedEnergy / Math.max(1, totalWeight));
-  state.ceiling = Math.max(0.04, energy, state.ceiling * 0.985);
-  const gatedEnergy = Math.max(0, energy - 0.012);
-  const dynamicRange = Math.max(0.028, state.ceiling - 0.012);
-  const normalized = Math.min(1, gatedEnergy / dynamicRange);
+  if (state.gateOpen) {
+    state.quietFrames =
+      energy < GATE_CLOSE_ENERGY ? state.quietFrames + 1 : 0;
+    if (state.quietFrames >= GATE_HOLD_FRAMES) {
+      state.gateOpen = false;
+      state.loudFrames = 0;
+    }
+  } else {
+    state.loudFrames =
+      energy > GATE_OPEN_ENERGY ? state.loudFrames + 1 : 0;
+    if (state.loudFrames >= GATE_OPEN_FRAMES) {
+      state.gateOpen = true;
+      state.quietFrames = 0;
+    }
+  }
 
-  const blur = Math.min(10, Math.max(1, 1 + air * 9));
-  const glowBlur = 2 + normalized * 18;
-  const glowSpread = normalized * 8;
+  state.ceiling = Math.max(0.065, energy, state.ceiling * 0.99);
+  const normalized = state.gateOpen
+    ? Math.min(
+        1,
+        Math.max(0, energy - GATE_CLOSE_ENERGY) /
+          Math.max(0.04, state.ceiling - GATE_CLOSE_ENERGY),
+      )
+    : 0;
+  const activityFactor = normalized > state.activity ? 0.32 : 0.08;
+  state.activity += (normalized - state.activity) * activityFactor;
+
+  const air = Math.sqrt(airEnergy / Math.max(1, airBins));
+  const airResponse = Math.min(1, air / 0.1);
+  const blur = 1 + state.activity * airResponse * 9;
+  const glowBlur = 2 + state.activity * 18;
+  const glowSpread = state.activity * 8;
 
   return { blur, glowBlur, glowSpread };
 }
@@ -101,9 +131,9 @@ export function smoothOrbReact(
   next: OrbReact,
 ): OrbReact {
   const glowFactor =
-    next.glowSpread > current.glowSpread ? 0.72 : 0.2;
+    next.glowSpread > current.glowSpread ? 0.4 : 0.1;
   return {
-    blur: current.blur + (next.blur - current.blur) * 0.35,
+    blur: current.blur + (next.blur - current.blur) * 0.18,
     glowBlur:
       current.glowBlur + (next.glowBlur - current.glowBlur) * glowFactor,
     glowSpread:
