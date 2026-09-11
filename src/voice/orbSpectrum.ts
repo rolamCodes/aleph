@@ -1,6 +1,7 @@
 export type OrbReact = {
   blur: number;
-  size: number;
+  glowBlur: number;
+  glowSpread: number;
 };
 
 export type OrbSpectrumState = {
@@ -9,9 +10,6 @@ export type OrbSpectrumState = {
   noiseFloor: Float32Array;
 };
 
-const MIN_SIZE = 4;
-const MAX_SIZE = 24;
-const SIZE_RANGE = MAX_SIZE - MIN_SIZE;
 const VOICE_BIN_END = 48;
 const CALIBRATION_FRAMES = 8;
 
@@ -82,7 +80,7 @@ export function computeOrbReact(
 
   if (state.calibrationFrames < CALIBRATION_FRAMES) {
     state.calibrationFrames += 1;
-    return { blur: 1, size: MIN_SIZE };
+    return { blur: 1, glowBlur: 2, glowSpread: 0 };
   }
 
   const energy = Math.sqrt(weightedEnergy / Math.max(1, totalWeight));
@@ -90,25 +88,32 @@ export function computeOrbReact(
   const gatedEnergy = Math.max(0, energy - 0.012);
   const dynamicRange = Math.max(0.028, state.ceiling - 0.012);
   const normalized = Math.min(1, gatedEnergy / dynamicRange);
-  const size = MIN_SIZE + normalized * SIZE_RANGE;
 
   const blur = Math.min(10, Math.max(1, 1 + air * 9));
+  const glowBlur = 2 + normalized * 18;
+  const glowSpread = normalized * 8;
 
-  return { blur, size };
+  return { blur, glowBlur, glowSpread };
 }
 
 export function smoothOrbReact(
   current: OrbReact,
   next: OrbReact,
 ): OrbReact {
-  const sizeFactor = next.size > current.size ? 0.72 : 0.2;
+  const glowFactor =
+    next.glowSpread > current.glowSpread ? 0.72 : 0.2;
   return {
     blur: current.blur + (next.blur - current.blur) * 0.35,
-    size: current.size + (next.size - current.size) * sizeFactor,
+    glowBlur:
+      current.glowBlur + (next.glowBlur - current.glowBlur) * glowFactor,
+    glowSpread:
+      current.glowSpread +
+      (next.glowSpread - current.glowSpread) * glowFactor,
   };
 }
 
 export const DEFAULT_ORB_REACT: OrbReact = {
   blur: 1,
-  size: MIN_SIZE,
+  glowBlur: 2,
+  glowSpread: 0,
 };

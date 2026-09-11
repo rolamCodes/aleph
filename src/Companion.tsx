@@ -137,15 +137,14 @@ function elementForTarget(target: PointedTarget): Element | null {
 }
 
 function applyOrbReact(orb: HTMLElement, react: OrbReact) {
-  orb.style.width = `${react.size}px`;
-  orb.style.height = `${react.size}px`;
   orb.style.filter = `blur(${react.blur}px)`;
+  orb.style.boxShadow =
+    `0 0 ${react.glowBlur}px ${react.glowSpread}px hsl(200, 100%, 50%)`;
 }
 
 function resetOrb(orb: HTMLElement) {
-  orb.style.removeProperty("width");
-  orb.style.removeProperty("height");
   orb.style.removeProperty("filter");
+  orb.style.removeProperty("box-shadow");
 }
 
 export default function Companion({
