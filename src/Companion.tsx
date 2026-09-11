@@ -1,8 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { PointedTarget, VoiceStatus } from "./types";
 
-const IDLE_SIZE = 8;
-const ACTIVE_IDLE_SIZE = IDLE_SIZE * 3;
 const CURSOR_OFFSET = 12;
 const ATTACHMENT_RADIUS = 80;
 const PADDING = 2;
@@ -25,14 +23,28 @@ function containsPoint(x: number, y: number, r: DOMRect): boolean {
   return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
 }
 
-function boxFromElement(el: Element): Box {
+function boxFromElement(el: Element, padding = PADDING): Box {
   const r = el.getBoundingClientRect();
   return {
-    left: r.left - PADDING,
-    top: r.top - PADDING,
-    width: r.width + PADDING * 2,
-    height: r.height + PADDING * 2,
+    left: r.left - padding,
+    top: r.top - padding,
+    width: r.width + padding * 2,
+    height: r.height + padding * 2,
   };
+}
+
+function setBox(el: HTMLElement, box: Box) {
+  el.style.left = `${box.left}px`;
+  el.style.top = `${box.top}px`;
+  el.style.width = `${box.width}px`;
+  el.style.height = `${box.height}px`;
+}
+
+function setPosition(el: HTMLElement, left: number, top: number) {
+  el.style.left = `${left}px`;
+  el.style.top = `${top}px`;
+  el.style.width = "";
+  el.style.height = "";
 }
 
 function pickHit(x: number, y: number): Element | null {
@@ -119,7 +131,7 @@ function elementForTarget(target: PointedTarget): Element | null {
   return null;
 }
 
-export default function Reticle({
+export default function Companion({
   focusTarget,
   frozen = false,
   onTargetChange,
@@ -130,15 +142,17 @@ export default function Reticle({
   onTargetChange: (target: PointedTarget) => void;
   status: VoiceStatus;
 }) {
-  const elRef = useRef<HTMLDivElement>(null);
+  const reticleRef = useRef<HTMLDivElement>(null);
+  const wellRef = useRef<HTMLDivElement>(null);
   const attachedRef = useRef<Element | null>(null);
   const pointerRef = useRef({ x: 0, y: 0, inside: false });
   const frozenPositionRef = useRef<{ x: number; y: number } | null>(null);
   const targetKeyRef = useRef("canvas");
 
   useEffect(() => {
-    const node = elRef.current;
-    if (!node) {
+    const reticle = reticleRef.current;
+    const well = wellRef.current;
+    if (!reticle || !well) {
       return;
     }
 
@@ -146,24 +160,45 @@ export default function Reticle({
       frozenPositionRef.current = null;
     }
 
-    const applyIdle = (x: number, y: number) => {
-      const active = status === "listening" || status === "processing";
-      const size = active ? ACTIVE_IDLE_SIZE : IDLE_SIZE;
-      node.classList.remove("reticle--snapped");
-      node.classList.toggle("reticle--active-idle", active);
-      node.style.width = `${size}px`;
-      node.style.height = `${size}px`;
-      node.style.left = `${x - CURSOR_OFFSET - size}px`;
-      node.style.top = `${y - CURSOR_OFFSET - size}px`;
+    const active = status === "listening" || status === "processing";
+
+    const setVisible = (visible: boolean) => {
+      const opacity = visible ? "1" : "0";
+      reticle.style.opacity = opacity;
+      well.style.opacity = opacity;
     };
 
-    const applySnap = (box: Box) => {
-      node.classList.add("reticle--snapped");
-      node.classList.remove("reticle--active-idle");
-      node.style.width = `${box.width}px`;
-      node.style.height = `${box.height}px`;
-      node.style.left = `${box.left}px`;
-      node.style.top = `${box.top}px`;
+    const snapToWell = () => {
+      reticle.classList.add("reticle--snapped");
+      reticle.classList.add("reticle--on-well");
+      reticle.classList.toggle("reticle--active-idle", active);
+      setBox(reticle, boxFromElement(well, 0));
+    };
+
+    const applyIdle = (x: number, y: number) => {
+      well.classList.toggle("companion-well--active", active);
+      const width = well.offsetWidth;
+      const height = well.offsetHeight;
+      const left = x - CURSOR_OFFSET - width;
+      const top = y - CURSOR_OFFSET - height;
+      if (well.style.left !== "" && well.style.top !== "") {
+        snapToWell();
+      } else {
+        reticle.classList.add("reticle--snapped");
+        reticle.classList.add("reticle--on-well");
+        reticle.classList.toggle("reticle--active-idle", active);
+        setBox(reticle, { left, top, width, height });
+      }
+      setPosition(well, left, top);
+    };
+
+    const applySnap = (focus: Box) => {
+      reticle.classList.add("reticle--snapped");
+      reticle.classList.remove("reticle--on-well");
+      reticle.classList.remove("reticle--active-idle");
+      setBox(reticle, focus);
+      well.classList.toggle("companion-well--active", active);
+      setPosition(well, focus.left + focus.width, focus.top + focus.height);
     };
 
     const reportTarget = (target: PointedTarget) => {
@@ -180,7 +215,7 @@ export default function Reticle({
         if (!frozenPositionRef.current) {
           frozenPositionRef.current = { x, y };
         }
-        node.style.opacity = inside ? "1" : "0";
+        setVisible(inside);
         applyIdle(frozenPositionRef.current.x, frozenPositionRef.current.y);
         return;
       }
@@ -196,7 +231,7 @@ export default function Reticle({
             ? attachedRef.current
             : null);
         if (processingElement) {
-          node.style.opacity = "1";
+          setVisible(true);
           attachedRef.current = processingElement;
           applySnap(boxFromElement(processingElement));
           return;
@@ -204,12 +239,12 @@ export default function Reticle({
       }
 
       if (!inside) {
-        node.style.opacity = "0";
+        setVisible(false);
         reportTarget({ kind: "canvas" });
         return;
       }
 
-      node.style.opacity = "1";
+      setVisible(true);
 
       const hit = pickHit(x, y);
       if (hit) {
@@ -248,11 +283,7 @@ export default function Reticle({
 
     let raf = 0;
     const loop = () => {
-      if (
-        status === "processing" ||
-        frozen ||
-        (attachedRef.current && pointerRef.current.inside)
-      ) {
+      if (status === "processing" || frozen || pointerRef.current.inside) {
         update();
       }
       raf = requestAnimationFrame(loop);
@@ -271,10 +302,11 @@ export default function Reticle({
   }, [focusTarget, frozen, onTargetChange, status]);
 
   return (
-    <div
-      ref={elRef}
-      className={`reticle reticle--${status}`}
-      aria-hidden="true"
-    />
+    <div className="companion" aria-hidden="true">
+      <div ref={wellRef} className="companion-well">
+        <div className="companion-orb" />
+      </div>
+      <div ref={reticleRef} className={`reticle reticle--${status}`} />
+    </div>
   );
 }

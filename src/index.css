@@ -74,25 +74,74 @@ body {
   cursor: none;
 }
 
+.companion {
+  pointer-events: none;
+}
+
+.companion-well,
 .reticle {
-  background: transparent;
-  border: 1.5px solid #3b9eff;
-  border-radius: 4px;
   box-sizing: border-box;
-  height: 8px;
   left: 0;
   opacity: 0;
   pointer-events: none;
   position: fixed;
   top: 0;
+}
+
+.companion-well {
+  background: #1a1a1a;
+  border-radius: 10px;
+  height: fit-content;
+  overflow: visible;
+  padding: 4px;
+  transition:
+    left 220ms cubic-bezier(0.22, 1.15, 0.36, 1),
+    top 220ms cubic-bezier(0.22, 1.15, 0.36, 1),
+    border-radius 180ms ease;
+  width: fit-content;
+  z-index: 9999;
+}
+
+.companion-well--active {
+  border-radius: 50%;
+}
+
+.companion-orb {
+  background: #cdeeff;
+  border-radius: 50%;
+  box-shadow: 0 0 12px 4px hsl(200, 100%, 50%);
+  display: block;
+  filter: blur(1px);
+  height: 12px;
+  transition:
+    width 180ms ease,
+    height 180ms ease;
+  width: 12px;
+}
+
+.companion-well--active .companion-orb {
+  height: 24px;
+  width: 24px;
+}
+
+.reticle {
+  background: transparent;
+  border: 1px solid #3b9eff;
+  border-radius: 10px;
+  z-index: 10000;
+}
+
+.reticle--snapped {
   transition:
     left 220ms cubic-bezier(0.22, 1.15, 0.36, 1),
     top 220ms cubic-bezier(0.22, 1.15, 0.36, 1),
     width 180ms ease,
     height 180ms ease,
     border-radius 180ms ease;
-  width: 8px;
-  z-index: 10000;
+}
+
+.reticle--on-well {
+  transition: border-radius 180ms ease;
 }
 
 .reticle--active-idle {
