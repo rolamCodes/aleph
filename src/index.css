@@ -117,7 +117,7 @@ body {
   width: 12px;
 }
 
-.companion-orb--listening {
+.companion-orb--live {
   transition: none;
   will-change: transform, filter, box-shadow;
 }

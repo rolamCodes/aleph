@@ -20,7 +20,10 @@ export type OrbEnvelopeState = {
 const CALIBRATION_FRAMES = 24;
 const GATE_OPEN_FRAMES = 3;
 const GATE_HOLD_FRAMES = 12;
-const RESTING_ENVELOPE = (1 - 0.65) / 1.35;
+const PROCESSING_AMPLITUDE = 0.14;
+const PROCESSING_CENTER = 0.32;
+const PROCESSING_PERIOD_MS = 1400;
+export const RESTING_ENVELOPE = (1 - 0.65) / 1.35;
 
 function rootMeanSquare(data: Float32Array<ArrayBufferLike>): number {
   let mean = 0;
@@ -50,14 +53,26 @@ export function createOrbEnvelopeState(): OrbEnvelopeState {
   };
 }
 
-function orbReactFromState(state: OrbEnvelopeState): OrbReact {
+export function orbReactFromEnvelope(envelope: number): OrbReact {
   return {
-    blur: 1 + state.envelope * 0.75,
-    glowBlur: 4 + state.envelope * 16,
-    glowOpacity: 0.45 + state.envelope * 0.55,
-    glowSpread: state.envelope * 6,
-    scale: 0.65 + state.envelope * 1.35,
+    blur: 1 + envelope * 0.75,
+    glowBlur: 4 + envelope * 16,
+    glowOpacity: 0.45 + envelope * 0.55,
+    glowSpread: envelope * 6,
+    scale: 0.65 + envelope * 1.35,
   };
+}
+
+export function processingOrbEnvelope(elapsedMs: number): number {
+  return (
+    PROCESSING_CENTER +
+    PROCESSING_AMPLITUDE *
+      Math.sin((elapsedMs / PROCESSING_PERIOD_MS) * Math.PI * 2)
+  );
+}
+
+function orbReactFromState(state: OrbEnvelopeState): OrbReact {
+  return orbReactFromEnvelope(state.envelope);
 }
 
 export function computeOrbReact(
