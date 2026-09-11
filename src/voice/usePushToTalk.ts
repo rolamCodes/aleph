@@ -1,17 +1,27 @@
 import { useEffect, useRef, useState } from "react";
 import type { PointedTarget, VoiceStatus } from "../types";
+import {
+  computeOrbReact,
+  createOrbEnvelopeState,
+  type OrbEnvelopeState,
+  type OrbReact,
+} from "./orbEnvelope";
 
 const MAX_RECORDING_MS = 30_000;
 const BUFFER_SIZE = 4096;
+const ANALYSER_FFT_SIZE = 1024;
 
 type ActiveCapture = {
+  analyser: AnalyserNode;
   audioContext: AudioContext;
   chunks: Float32Array[];
+  envelopeState: OrbEnvelopeState;
   processor: ScriptProcessorNode;
   silentGain: GainNode;
   source: MediaStreamAudioSourceNode;
   stream: MediaStream;
   target: PointedTarget;
+  timeData: Float32Array;
   timeout: ReturnType<typeof setTimeout>;
 };
 
@@ -74,6 +84,7 @@ function releaseCapture(capture: ActiveCapture): void {
   clearTimeout(capture.timeout);
   capture.processor.onaudioprocess = null;
   capture.source.disconnect();
+  capture.analyser.disconnect();
   capture.processor.disconnect();
   capture.silentGain.disconnect();
   for (const track of capture.stream.getTracks()) {
@@ -90,6 +101,7 @@ export function usePushToTalk({
   onRecording: (audio: Blob, target: PointedTarget) => Promise<void>;
 }): {
   error: string | null;
+  readOrbReact: () => OrbReact | null;
   status: VoiceStatus;
 } {
   const [status, setStatus] = useState<VoiceStatus>("idle");
@@ -101,6 +113,18 @@ export function usePushToTalk({
   const pressedRef = useRef(false);
   const requestIdRef = useRef(0);
   const statusRef = useRef<VoiceStatus>("idle");
+
+  const readOrbReact = (): OrbReact | null => {
+    const active = activeRef.current;
+    if (!active || statusRef.current !== "listening") {
+      return null;
+    }
+
+    active.analyser.getFloatTimeDomainData(
+      active.timeData as Float32Array<ArrayBuffer>,
+    );
+    return computeOrbReact(active.timeData, active.envelopeState);
+  };
 
   useEffect(() => {
     onRecordingRef.current = onRecording;
@@ -172,7 +196,11 @@ export function usePushToTalk({
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
+          audio: {
+            autoGainControl: true,
+            echoCancellation: true,
+            noiseSuppression: true,
+          },
         });
         if (
           !mountedRef.current ||
@@ -201,15 +229,19 @@ export function usePushToTalk({
           return;
         }
         const source = audioContext.createMediaStreamSource(stream);
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = ANALYSER_FFT_SIZE;
         const processor = audioContext.createScriptProcessor(BUFFER_SIZE, 1, 1);
         const silentGain = audioContext.createGain();
         const chunks: Float32Array[] = [];
+        const timeData = new Float32Array(analyser.fftSize);
 
         silentGain.gain.value = 0;
         processor.onaudioprocess = (event) => {
           chunks.push(new Float32Array(event.inputBuffer.getChannelData(0)));
         };
-        source.connect(processor);
+        source.connect(analyser);
+        analyser.connect(processor);
         processor.connect(silentGain);
         silentGain.connect(audioContext.destination);
 
@@ -219,13 +251,16 @@ export function usePushToTalk({
         }, MAX_RECORDING_MS);
 
         activeRef.current = {
+          analyser,
           audioContext,
           chunks,
+          envelopeState: createOrbEnvelopeState(),
           processor,
           silentGain,
           source,
           stream,
           target,
+          timeData,
           timeout,
         };
         updateStatus("listening");
@@ -282,5 +317,5 @@ export function usePushToTalk({
     };
   }, []);
 
-  return { error, status };
+  return { error, readOrbReact, status };
 }
