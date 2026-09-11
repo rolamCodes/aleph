@@ -1,11 +1,11 @@
 export type OrbReact = {
   blur: number;
-  hue: number;
   size: number;
 };
 
-const BASE_HUE = 200;
-const HUE_RANGE = 7.2; // ±2% of the hue wheel
+const MIN_SIZE = 4;
+const MAX_SIZE = 24;
+const SIZE_RANGE = MAX_SIZE - MIN_SIZE;
 
 function bandEnergy(
   data: Uint8Array<ArrayBufferLike>,
@@ -23,26 +23,34 @@ function bandEnergy(
   return sum / (count * 255);
 }
 
+function bandPeak(
+  data: Uint8Array<ArrayBufferLike>,
+  start: number,
+  end: number,
+): number {
+  let peak = 0;
+  for (let index = start; index < end && index < data.length; index += 1) {
+    peak = Math.max(peak, (data[index] ?? 0) / 255);
+  }
+  return peak;
+}
+
 export function computeOrbReact(
   data: Uint8Array<ArrayBufferLike>,
 ): OrbReact {
-  // Chest voice and plosives — the orb's "mass"
-  const body = bandEnergy(data, 2, 11);
-  // Vowel formants — timbre and openness
-  const formant = bandEnergy(data, 12, 38);
-  // Fricatives, sibilance, room air — softness and shimmer
+  const body = bandEnergy(data, 2, 14);
+  const formant = bandEnergy(data, 10, 52);
   const air = bandEnergy(data, 39, 96);
+  const peak = bandPeak(data, 2, 52);
 
-  const punch = Math.pow(body * 0.5 + formant * 0.5, 0.7);
-  const size = 4 + punch * 10;
+  const mass = body * 0.35 + formant * 0.45 + peak * 0.2;
+  const boosted = 1 - Math.exp(-mass * 5.5);
+  const size = MIN_SIZE + Math.pow(boosted, 0.55) * SIZE_RANGE;
 
   const whisper = air * (1 - body * 0.6);
   const blur = Math.min(10, Math.max(1, 1 + whisper * 6 + air * 3));
 
-  const tilt = (formant - body) / (formant + body + 0.04);
-  const hue = BASE_HUE + Math.max(-1, Math.min(1, tilt)) * HUE_RANGE;
-
-  return { blur, hue, size };
+  return { blur, size };
 }
 
 export function smoothOrbReact(
@@ -52,13 +60,11 @@ export function smoothOrbReact(
 ): OrbReact {
   return {
     blur: current.blur + (next.blur - current.blur) * factor,
-    hue: current.hue + (next.hue - current.hue) * factor,
     size: current.size + (next.size - current.size) * factor,
   };
 }
 
 export const DEFAULT_ORB_REACT: OrbReact = {
   blur: 1,
-  hue: BASE_HUE,
   size: 12,
 };

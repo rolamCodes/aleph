@@ -140,16 +140,12 @@ function applyOrbReact(orb: HTMLElement, react: OrbReact) {
   orb.style.width = `${react.size}px`;
   orb.style.height = `${react.size}px`;
   orb.style.filter = `blur(${react.blur}px)`;
-  orb.style.background = `hsl(${react.hue}, 100%, 85%)`;
-  orb.style.boxShadow = `0 0 12px 4px hsl(${react.hue}, 100%, 50%)`;
 }
 
 function resetOrb(orb: HTMLElement) {
   orb.style.removeProperty("width");
   orb.style.removeProperty("height");
   orb.style.removeProperty("filter");
-  orb.style.removeProperty("background");
-  orb.style.removeProperty("box-shadow");
 }
 
 export default function Companion({
@@ -333,7 +329,7 @@ export default function Companion({
     const tick = () => {
       const sample = readOrbReact();
       if (sample) {
-        smoothed = smoothOrbReact(smoothed, sample, 0.35);
+        smoothed = smoothOrbReact(smoothed, sample, 0.55);
         applyOrbReact(orb, smoothed);
       }
       raf = requestAnimationFrame(tick);

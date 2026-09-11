@@ -221,7 +221,7 @@ export function usePushToTalk({
         const source = audioContext.createMediaStreamSource(stream);
         const analyser = audioContext.createAnalyser();
         analyser.fftSize = ANALYSER_FFT_SIZE;
-        analyser.smoothingTimeConstant = 0.65;
+        analyser.smoothingTimeConstant = 0.45;
         const processor = audioContext.createScriptProcessor(BUFFER_SIZE, 1, 1);
         const silentGain = audioContext.createGain();
         const chunks: Float32Array[] = [];
