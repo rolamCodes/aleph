@@ -135,16 +135,14 @@ function elementForTarget(target: PointedTarget): Element | null {
 function applyOrbReact(orb: HTMLElement, react: OrbReact) {
   orb.style.transform = `scale(${react.scale})`;
   orb.style.filter = `blur(${react.blur}px)`;
-  orb.style.background = `hsl(${react.hue} 100% 85%)`;
   orb.style.boxShadow =
     `0 0 ${react.glowBlur}px ${react.glowSpread}px ` +
-    `hsl(${react.hue} 100% 50% / ${react.glowOpacity})`;
+    `hsl(200 100% 50% / ${react.glowOpacity})`;
 }
 
 function resetOrb(orb: HTMLElement) {
   orb.style.removeProperty("transform");
   orb.style.removeProperty("filter");
-  orb.style.removeProperty("background");
   orb.style.removeProperty("box-shadow");
 }
 

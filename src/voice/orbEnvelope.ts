@@ -3,7 +3,6 @@ export type OrbReact = {
   glowBlur: number;
   glowOpacity: number;
   glowSpread: number;
-  hue: number;
   scale: number;
 };
 
@@ -11,7 +10,6 @@ export type OrbEnvelopeState = {
   calibrationFrames: number;
   calibrationLevels: number[];
   ceiling: number;
-  colorEnvelope: number;
   envelope: number;
   gateOpen: boolean;
   loudFrames: number;
@@ -44,7 +42,6 @@ export function createOrbEnvelopeState(): OrbEnvelopeState {
     calibrationFrames: 0,
     calibrationLevels: [],
     ceiling: 0.05,
-    colorEnvelope: 0,
     envelope: RESTING_ENVELOPE,
     gateOpen: false,
     loudFrames: 0,
@@ -59,7 +56,6 @@ function orbReactFromState(state: OrbEnvelopeState): OrbReact {
     glowBlur: 4 + state.envelope * 16,
     glowOpacity: 0.45 + state.envelope * 0.55,
     glowSpread: state.envelope * 6,
-    hue: 200 + state.colorEnvelope * 65,
     scale: 0.65 + state.envelope * 1.35,
   };
 }
@@ -123,10 +119,6 @@ export function computeOrbReact(
   const compressed = rawActivity * rawActivity * (3 - 2 * rawActivity);
   const envelopeFactor = compressed > state.envelope ? 0.35 : 0.08;
   state.envelope += (compressed - state.envelope) * envelopeFactor;
-  const colorFactor =
-    state.envelope > state.colorEnvelope ? 0.025 : 0.015;
-  state.colorEnvelope +=
-    (state.envelope - state.colorEnvelope) * colorFactor;
 
   return orbReactFromState(state);
 }
