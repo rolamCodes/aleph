@@ -1,10 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { PointedTarget, VoiceStatus } from "./types";
 
-const IDLE_ORB_SIZE = 8;
-const WELL_PADDING = 2;
-const IDLE_SIZE = IDLE_ORB_SIZE + WELL_PADDING * 2;
-const ACTIVE_IDLE_SIZE = IDLE_SIZE * 3;
 const CURSOR_OFFSET = 12;
 const ATTACHMENT_RADIUS = 80;
 const PADDING = 2;
@@ -27,13 +23,13 @@ function containsPoint(x: number, y: number, r: DOMRect): boolean {
   return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
 }
 
-function boxFromElement(el: Element): Box {
+function boxFromElement(el: Element, padding = PADDING): Box {
   const r = el.getBoundingClientRect();
   return {
-    left: r.left - PADDING,
-    top: r.top - PADDING,
-    width: r.width + PADDING * 2,
-    height: r.height + PADDING * 2,
+    left: r.left - padding,
+    top: r.top - padding,
+    width: r.width + padding * 2,
+    height: r.height + padding * 2,
   };
 }
 
@@ -44,13 +40,11 @@ function setBox(el: HTMLElement, box: Box) {
   el.style.height = `${box.height}px`;
 }
 
-function dockWell(focus: Box, size: number): Box {
-  return {
-    left: focus.left + focus.width,
-    top: focus.top + focus.height,
-    width: size,
-    height: size,
-  };
+function setPosition(el: HTMLElement, left: number, top: number) {
+  el.style.left = `${left}px`;
+  el.style.top = `${top}px`;
+  el.style.width = "";
+  el.style.height = "";
 }
 
 function pickHit(x: number, y: number): Element | null {
@@ -167,7 +161,6 @@ export default function Companion({
     }
 
     const active = status === "listening" || status === "processing";
-    const wellSize = active ? ACTIVE_IDLE_SIZE : IDLE_SIZE;
 
     const setVisible = (visible: boolean) => {
       const opacity = visible ? "1" : "0";
@@ -175,29 +168,28 @@ export default function Companion({
       well.style.opacity = opacity;
     };
 
-    const placeWell = (box: Box) => {
-      well.classList.toggle("companion-well--active", active);
-      setBox(well, box);
+    const hugWell = () => {
+      setBox(reticle, boxFromElement(well, 0));
     };
 
     const applyIdle = (x: number, y: number) => {
-      const box = {
-        left: x - CURSOR_OFFSET - wellSize,
-        top: y - CURSOR_OFFSET - wellSize,
-        width: wellSize,
-        height: wellSize,
-      };
+      well.classList.toggle("companion-well--active", active);
+      setPosition(
+        well,
+        x - CURSOR_OFFSET - well.offsetWidth,
+        y - CURSOR_OFFSET - well.offsetHeight,
+      );
       reticle.classList.remove("reticle--snapped");
       reticle.classList.toggle("reticle--active-idle", active);
-      placeWell(box);
-      setBox(reticle, box);
+      hugWell();
     };
 
     const applySnap = (focus: Box) => {
       reticle.classList.add("reticle--snapped");
       reticle.classList.remove("reticle--active-idle");
       setBox(reticle, focus);
-      placeWell(dockWell(focus, wellSize));
+      well.classList.toggle("companion-well--active", active);
+      setPosition(well, focus.left + focus.width, focus.top + focus.height);
     };
 
     const reportTarget = (target: PointedTarget) => {
@@ -282,11 +274,7 @@ export default function Companion({
 
     let raf = 0;
     const loop = () => {
-      if (
-        status === "processing" ||
-        frozen ||
-        (attachedRef.current && pointerRef.current.inside)
-      ) {
+      if (status === "processing" || frozen || pointerRef.current.inside) {
         update();
       }
       raf = requestAnimationFrame(loop);
