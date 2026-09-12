@@ -62,6 +62,12 @@ export const interactionEdgeValidator = v.object({
   label: v.string(),
   data: v.object({
     interaction: v.string(),
+    bend: v.optional(
+      v.object({
+        x: v.number(),
+        y: v.number(),
+      }),
+    ),
   }),
 });
 

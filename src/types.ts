@@ -50,8 +50,16 @@ export type ContextData = {
 
 export type ContextNode = Node<ContextData, "context">;
 
+export type EdgeBend = {
+  x: number;
+  y: number;
+};
+
 export type InteractionEdgeData = {
   interaction: InteractionType;
+  bend?: EdgeBend;
+  onBendChange?: (edgeId: string, bend: EdgeBend) => void;
+  onBendChangeEnd?: () => void;
 };
 
 export type InteractionEdge = Edge<InteractionEdgeData>;

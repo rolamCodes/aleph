@@ -191,6 +191,17 @@ body {
   fill: #ffffff;
 }
 
+.edge-stretch-grip {
+  fill: #020303;
+  stroke: #ffffff;
+  stroke-width: 2;
+  cursor: grab;
+}
+
+.edge-stretch-grip:active {
+  cursor: grabbing;
+}
+
 .edge-label {
   background: #000000;
   color: #ffffff;
