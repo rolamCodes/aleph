@@ -190,6 +190,20 @@ body {
   fill: #ffffff;
 }
 
+.edge-grip {
+  fill: #020303;
+  stroke: #ffffff;
+  stroke-width: 2;
+}
+
+.react-flow__edgeupdater {
+  cursor: grab;
+}
+
+.react-flow__edgeupdater:active {
+  cursor: grabbing;
+}
+
 .edge-label {
   background: #000000;
   color: #ffffff;

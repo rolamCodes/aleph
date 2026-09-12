@@ -3,6 +3,7 @@ import {
   addEdge,
   Background,
   ReactFlow,
+  reconnectEdge,
   useEdgesState,
   useNodesState,
   type Connection,
@@ -167,6 +168,17 @@ export default function Canvas() {
     [persist, setEdges],
   );
 
+  const onReconnect = useCallback(
+    (oldEdge: InteractionEdgeType, connection: Connection) => {
+      if (!isValidInteraction(connection)) return;
+      const nextEdges = reconnectEdge(oldEdge, connection, edgesRef.current);
+      edgesRef.current = nextEdges;
+      setEdges(nextEdges);
+      void persist(nodesRef.current, nextEdges);
+    },
+    [persist, setEdges],
+  );
+
   const onRecording = useCallback(
     async (audio: Blob, target: PointedTarget): Promise<void> => {
       if (!project) throw new Error("Project is not ready");
@@ -292,10 +304,12 @@ export default function Canvas() {
           void persist(nodesRef.current, nextEdges);
         }}
         onConnect={onConnect}
+        onReconnect={onReconnect}
         isValidConnection={isValidInteraction}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
+        reconnectRadius={14}
         onInit={(instance) => {
           instanceRef.current = instance;
         }}
