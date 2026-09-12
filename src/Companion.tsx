@@ -1,6 +1,13 @@
 import { useEffect, useRef } from "react";
 import type { PointedTarget, VoiceStatus } from "./types";
-import type { OrbReact } from "./voice/orbEnvelope";
+import {
+  LISTENING_HUE,
+  PROCESSING_HUE,
+  orbReactFromEnvelope,
+  processingOrbEnvelope,
+  RESTING_ENVELOPE,
+  type OrbReact,
+} from "./voice/orbEnvelope";
 
 const CURSOR_OFFSET = 12;
 const ATTACHMENT_RADIUS = 80;
@@ -132,18 +139,44 @@ function elementForTarget(target: PointedTarget): Element | null {
   return null;
 }
 
+const ENVELOPE_ATTACK = 0.35;
+const ENVELOPE_RELEASE = 0.08;
+const HUE_BLEND = 0.1;
+const SETTLE_MS = 280;
+
+function warmthFromHue(hue: number): number {
+  return Math.min(
+    1,
+    Math.max(0, (LISTENING_HUE - hue) / (LISTENING_HUE - PROCESSING_HUE)),
+  );
+}
+
 function applyOrbReact(orb: HTMLElement, react: OrbReact) {
+  const satDip = Math.sin(warmthFromHue(react.hue) * Math.PI);
+  const fillSat = 100 - 35 * satDip;
+  const glowSat = 100 - 50 * satDip;
   orb.style.transform = `scale(${react.scale})`;
   orb.style.filter = `blur(${react.blur}px)`;
+  orb.style.background = `hsl(${react.hue} ${fillSat}% 90%)`;
   orb.style.boxShadow =
     `0 0 ${react.glowBlur}px ${react.glowSpread}px ` +
-    `hsl(200 100% 50% / ${react.glowOpacity})`;
+    `hsl(${react.hue} ${glowSat}% 50% / ${react.glowOpacity})`;
 }
 
 function resetOrb(orb: HTMLElement) {
   orb.style.removeProperty("transform");
   orb.style.removeProperty("filter");
+  orb.style.removeProperty("background");
   orb.style.removeProperty("box-shadow");
+}
+
+function envelopeFromReact(react: OrbReact): number {
+  return (react.scale - 0.65) / 1.35;
+}
+
+function blendEnvelope(current: number, target: number): number {
+  const factor = target > current ? ENVELOPE_ATTACK : ENVELOPE_RELEASE;
+  return current + (target - current) * factor;
 }
 
 export default function Companion({
@@ -165,7 +198,12 @@ export default function Companion({
   const attachedRef = useRef<Element | null>(null);
   const pointerRef = useRef({ x: 0, y: 0, inside: false });
   const frozenPositionRef = useRef<{ x: number; y: number } | null>(null);
+  const lastEnvelopeRef = useRef(RESTING_ENVELOPE);
+  const lastHueRef = useRef(LISTENING_HUE);
+  const processingStartedAtRef = useRef<number | null>(null);
+  const readOrbReactRef = useRef(readOrbReact);
   const targetKeyRef = useRef("canvas");
+  readOrbReactRef.current = readOrbReact;
 
   useEffect(() => {
     const reticle = reticleRef.current;
@@ -314,37 +352,94 @@ export default function Companion({
 
   useEffect(() => {
     const orb = orbRef.current;
-    if (!orb || status !== "listening") {
-      if (orb) {
-        resetOrb(orb);
-      }
+    if (!orb) {
       return;
     }
 
-    let raf = 0;
+    const live = status === "listening" || status === "processing";
+    if (status !== "processing") {
+      processingStartedAtRef.current = null;
+    } else if (processingStartedAtRef.current === null) {
+      processingStartedAtRef.current = performance.now();
+    }
 
-    const tick = () => {
-      const sample = readOrbReact();
-      if (sample) {
-        applyOrbReact(orb, sample);
-      }
+    if (live) {
+      orb.classList.add("companion-orb--live");
+      let raf = 0;
+      const tick = () => {
+        if (status === "listening") {
+          const sample = readOrbReactRef.current();
+          if (sample) {
+            lastEnvelopeRef.current = envelopeFromReact(sample);
+            lastHueRef.current = LISTENING_HUE;
+            applyOrbReact(orb, sample);
+          }
+        } else {
+          const startedAt = processingStartedAtRef.current ?? performance.now();
+          const target = processingOrbEnvelope(performance.now() - startedAt);
+          lastEnvelopeRef.current = blendEnvelope(
+            lastEnvelopeRef.current,
+            target,
+          );
+          lastHueRef.current +=
+            (PROCESSING_HUE - lastHueRef.current) * HUE_BLEND;
+          applyOrbReact(
+            orb,
+            orbReactFromEnvelope(lastEnvelopeRef.current, lastHueRef.current),
+          );
+        }
+        raf = requestAnimationFrame(tick);
+      };
       raf = requestAnimationFrame(tick);
-    };
+      return () => {
+        cancelAnimationFrame(raf);
+      };
+    }
 
+    const from = lastEnvelopeRef.current;
+    const fromHue = lastHueRef.current;
+    if (
+      Math.abs(from - RESTING_ENVELOPE) < 0.01 &&
+      Math.abs(fromHue - LISTENING_HUE) < 1
+    ) {
+      lastEnvelopeRef.current = RESTING_ENVELOPE;
+      lastHueRef.current = LISTENING_HUE;
+      resetOrb(orb);
+      orb.classList.remove("companion-orb--live");
+      return;
+    }
+
+    orb.classList.add("companion-orb--live");
+    const origin = performance.now();
+    let raf = 0;
+    const tick = () => {
+      const t = Math.min(1, (performance.now() - origin) / SETTLE_MS);
+      const eased = 1 - (1 - t) * (1 - t);
+      lastEnvelopeRef.current = from + (RESTING_ENVELOPE - from) * eased;
+      lastHueRef.current = fromHue + (LISTENING_HUE - fromHue) * eased;
+      applyOrbReact(
+        orb,
+        orbReactFromEnvelope(lastEnvelopeRef.current, lastHueRef.current),
+      );
+      if (t < 1) {
+        raf = requestAnimationFrame(tick);
+        return;
+      }
+      lastEnvelopeRef.current = RESTING_ENVELOPE;
+      lastHueRef.current = LISTENING_HUE;
+      resetOrb(orb);
+      orb.classList.remove("companion-orb--live");
+    };
     raf = requestAnimationFrame(tick);
     return () => {
       cancelAnimationFrame(raf);
-      resetOrb(orb);
     };
-  }, [readOrbReact, status]);
+  }, [status]);
 
   return (
     <div className="companion" aria-hidden="true">
       <div ref={wellRef} className="companion-well">
-        <div
-          ref={orbRef}
-          className={`companion-orb${status === "listening" ? " companion-orb--listening" : ""}`}
-        />
+        <div ref={orbRef} className="companion-orb" />
       </div>
       <div ref={reticleRef} className="reticle" />
     </div>
