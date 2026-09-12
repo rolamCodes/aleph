@@ -3,7 +3,6 @@ import {
   addEdge,
   Background,
   ReactFlow,
-  reconnectEdge,
   useEdgesState,
   useNodesState,
   type Connection,
@@ -21,6 +20,7 @@ import Companion from "./Companion";
 import { usePushToTalk } from "./voice/usePushToTalk";
 import type {
   ContextNode as ContextNodeType,
+  EdgeBend,
   InteractionEdge as InteractionEdgeType,
   PointedTarget,
 } from "./types";
@@ -71,6 +71,14 @@ function serializeEdges(edges: InteractionEdgeType[]) {
     label: edge.data?.interaction ?? String(edge.label ?? "click"),
     data: {
       interaction: edge.data?.interaction ?? String(edge.label ?? "click"),
+      ...(edge.data?.bend
+        ? {
+            bend: {
+              x: edge.data.bend.x,
+              y: edge.data.bend.y,
+            },
+          }
+        : {}),
     },
   }));
 }
@@ -120,15 +128,6 @@ export default function Canvas() {
     nodesRef.current = nodes;
   }, [edges, nodes]);
 
-  useEffect(() => {
-    if (!project || syncedAtRef.current === project.updatedAt) return;
-    syncedAtRef.current = project.updatedAt;
-    nodesRef.current = project.nodes;
-    edgesRef.current = project.edges;
-    setNodes(project.nodes);
-    setEdges(project.edges);
-  }, [project, setEdges, setNodes]);
-
   const persist = useCallback(
     async (
       nextNodes: ContextNodeType[],
@@ -149,6 +148,46 @@ export default function Canvas() {
     [project, replaceGraph],
   );
 
+  const onBendChange = useCallback(
+    (edgeId: string, bend: EdgeBend) => {
+      const nextEdges = edgesRef.current.map((edge) =>
+        edge.id === edgeId
+          ? { ...edge, data: { ...edge.data, bend } }
+          : edge,
+      );
+      edgesRef.current = nextEdges;
+      setEdges(nextEdges);
+    },
+    [setEdges],
+  );
+
+  const onBendChangeEnd = useCallback(() => {
+    void persist(nodesRef.current, edgesRef.current);
+  }, [persist]);
+
+  const withBendHandlers = useCallback(
+    (graphEdges: InteractionEdgeType[]) =>
+      graphEdges.map((edge) => ({
+        ...edge,
+        data: {
+          ...edge.data,
+          onBendChange,
+          onBendChangeEnd,
+        },
+      })),
+    [onBendChange, onBendChangeEnd],
+  );
+
+  useEffect(() => {
+    if (!project || syncedAtRef.current === project.updatedAt) return;
+    syncedAtRef.current = project.updatedAt;
+    const nextEdges = withBendHandlers(project.edges);
+    nodesRef.current = project.nodes;
+    edgesRef.current = nextEdges;
+    setNodes(project.nodes);
+    setEdges(nextEdges);
+  }, [project, setEdges, setNodes, withBendHandlers]);
+
   const onConnect = useCallback(
     (connection: Connection) => {
       if (!isValidInteraction(connection)) return;
@@ -157,7 +196,11 @@ export default function Canvas() {
           ...connection,
           type: "interaction",
           label: "click",
-          data: { interaction: "click" },
+          data: {
+            interaction: "click",
+            onBendChange,
+            onBendChangeEnd,
+          },
         },
         edgesRef.current,
       );
@@ -165,18 +208,7 @@ export default function Canvas() {
       setEdges(nextEdges);
       void persist(nodesRef.current, nextEdges);
     },
-    [persist, setEdges],
-  );
-
-  const onReconnect = useCallback(
-    (oldEdge: InteractionEdgeType, connection: Connection) => {
-      if (!isValidInteraction(connection)) return;
-      const nextEdges = reconnectEdge(oldEdge, connection, edgesRef.current);
-      edgesRef.current = nextEdges;
-      setEdges(nextEdges);
-      void persist(nodesRef.current, nextEdges);
-    },
-    [persist, setEdges],
+    [onBendChange, onBendChangeEnd, persist, setEdges],
   );
 
   const onRecording = useCallback(
@@ -304,12 +336,10 @@ export default function Canvas() {
           void persist(nodesRef.current, nextEdges);
         }}
         onConnect={onConnect}
-        onReconnect={onReconnect}
         isValidConnection={isValidInteraction}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
-        reconnectRadius={14}
         onInit={(instance) => {
           instanceRef.current = instance;
         }}

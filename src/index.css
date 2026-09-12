@@ -190,17 +190,14 @@ body {
   fill: #ffffff;
 }
 
-.edge-grip {
+.edge-stretch-grip {
   fill: #020303;
   stroke: #ffffff;
   stroke-width: 2;
-}
-
-.react-flow__edgeupdater {
   cursor: grab;
 }
 
-.react-flow__edgeupdater:active {
+.edge-stretch-grip:active {
   cursor: grabbing;
 }
 
