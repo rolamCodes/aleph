@@ -1,15 +1,17 @@
 import {
   BaseEdge,
   EdgeLabelRenderer,
-  getSmoothStepPath,
-  Position,
+  useInternalNode,
+  useStore,
+  type ConnectionLineComponentProps,
   type EdgeProps,
 } from "@xyflow/react";
-
-const EXIT_PORT_SIZE = 36;
+import { boxFromNode, getInteractionPath, laneForEdge } from "./edgePath";
 
 export default function InteractionEdge({
   id,
+  source,
+  target,
   sourceX,
   sourceY,
   targetX,
@@ -19,22 +21,26 @@ export default function InteractionEdge({
   label,
   style,
 }: EdgeProps) {
-  const originX =
-    sourcePosition === Position.Right ? sourceX - EXIT_PORT_SIZE / 2 : sourceX;
-  const originY = sourceY;
-
-  const [edgePath, labelX, labelY] = getSmoothStepPath({
-    sourceX: originX,
-    sourceY: originY,
-    sourcePosition,
+  const sourceNode = useInternalNode(source);
+  const targetNode = useInternalNode(target);
+  const lane = useStore((state) =>
+    laneForEdge(id, source, target, state.edges, state.nodeLookup),
+  );
+  const { path, labelX, labelY, originX, originY } = getInteractionPath({
+    sourceX,
+    sourceY,
     targetX,
     targetY,
+    sourcePosition,
     targetPosition,
+    sourceBox: boxFromNode(sourceNode),
+    targetBox: boxFromNode(targetNode),
+    lane,
   });
 
   return (
     <>
-      <BaseEdge id={id} path={edgePath} style={style} />
+      <BaseEdge id={id} path={path} style={style} />
       <circle className="edge-terminal" cx={originX} cy={originY} r={6} />
       {label ? (
         <EdgeLabelRenderer>
@@ -49,5 +55,38 @@ export default function InteractionEdge({
         </EdgeLabelRenderer>
       ) : null}
     </>
+  );
+}
+
+export function InteractionConnectionLine({
+  fromX,
+  fromY,
+  fromPosition,
+  toX,
+  toY,
+  toPosition,
+  fromNode,
+  toNode,
+  connectionLineStyle,
+}: ConnectionLineComponentProps) {
+  const { path } = getInteractionPath({
+    sourceX: fromX,
+    sourceY: fromY,
+    targetX: toX,
+    targetY: toY,
+    sourcePosition: fromPosition,
+    targetPosition: toPosition,
+    sourceBox: boxFromNode(fromNode),
+    targetBox: boxFromNode(toNode),
+    lane: 0,
+  });
+
+  return (
+    <path
+      d={path}
+      className="react-flow__connection-path"
+      fill="none"
+      style={connectionLineStyle}
+    />
   );
 }

@@ -14,7 +14,9 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import type { Id } from "../convex/_generated/dataModel";
 import { api } from "../convex/_generated/api";
 import ContextNode from "./ContextNode";
-import InteractionEdge from "./InteractionEdge";
+import InteractionEdge, {
+  InteractionConnectionLine,
+} from "./InteractionEdge";
 import { inferPointedTargetFromGraphChange } from "./inferPointedTarget";
 import Companion from "./Companion";
 import { usePushToTalk } from "./voice/usePushToTalk";
@@ -296,6 +298,7 @@ export default function Canvas() {
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
+        connectionLineComponent={InteractionConnectionLine}
         onInit={(instance) => {
           instanceRef.current = instance;
         }}
