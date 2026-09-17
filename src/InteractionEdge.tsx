@@ -28,9 +28,7 @@ function getEdgePath(points: EdgePoint[]) {
 function getLabelPoint(points: EdgePoint[]): EdgePoint {
   const lengths = points.slice(1).map((point, index) => {
     const start = points[index];
-    return start
-      ? Math.hypot(point.x - start.x, point.y - start.y)
-      : 0;
+    return start ? Math.hypot(point.x - start.x, point.y - start.y) : 0;
   });
   const halfway = lengths.reduce((total, length) => total + length, 0) / 2;
   let traversed = 0;
@@ -56,6 +54,17 @@ function getLabelPoint(points: EdgePoint[]): EdgePoint {
   }
 
   return points[0] ?? { x: 0, y: 0 };
+}
+
+function translateSegment(
+  segmentStart: EdgePoint,
+  segmentEnd: EdgePoint,
+  offset: EdgePoint,
+): EdgePoint[] {
+  return [
+    { x: segmentStart.x + offset.x, y: segmentStart.y + offset.y },
+    { x: segmentEnd.x + offset.x, y: segmentEnd.y + offset.y },
+  ];
 }
 
 function moveSegment(
@@ -87,6 +96,7 @@ export default function InteractionEdge({
   label,
   style,
   data,
+  selected,
 }: EdgeProps<InteractionEdge>) {
   const { screenToFlowPosition } = useReactFlow();
   const skipNextSegmentClick = useRef(false);
@@ -101,14 +111,17 @@ export default function InteractionEdge({
   ];
   const edgePath = getEdgePath(pathPoints);
   const labelPoint = getLabelPoint(pathPoints);
+  const editing = selected === true;
 
   const toFlowPoint = (event: Pick<PointerEvent, "clientX" | "clientY">) =>
     screenToFlowPosition({ x: event.clientX, y: event.clientY });
 
   const onWaypointPointerDown =
-    (pointIndex: number) => (event: ReactPointerEvent<SVGCircleElement>) => {
+    (pointIndex: number) =>
+    (event: ReactPointerEvent<HTMLDivElement>) => {
       event.preventDefault();
       event.stopPropagation();
+      event.currentTarget.setPointerCapture(event.pointerId);
 
       const onPointerMove = (moveEvent: PointerEvent) => {
         const nextPoint = toFlowPoint(moveEvent);
@@ -119,19 +132,26 @@ export default function InteractionEdge({
           ),
         );
       };
-      const onPointerUp = () => {
-        window.removeEventListener("pointermove", onPointerMove);
+      const onPointerUp = (upEvent: PointerEvent) => {
+        event.currentTarget.releasePointerCapture(upEvent.pointerId);
+        event.currentTarget.removeEventListener("pointermove", onPointerMove);
         data?.onPointsChangeEnd?.();
       };
 
-      window.addEventListener("pointermove", onPointerMove);
-      window.addEventListener("pointerup", onPointerUp, { once: true });
+      event.currentTarget.addEventListener("pointermove", onPointerMove);
+      event.currentTarget.addEventListener("pointerup", onPointerUp, {
+        once: true,
+      });
     };
 
   const onSegmentPointerDown =
     (segmentIndex: number) => (event: ReactPointerEvent<SVGPathElement>) => {
       event.preventDefault();
       event.stopPropagation();
+      const segmentStart = pathPoints[segmentIndex];
+      const segmentEnd = pathPoints[segmentIndex + 1];
+      if (!segmentStart || !segmentEnd) return;
+
       const start = toFlowPoint(event);
       const startPoints = points.map((point) => ({ ...point }));
       const startClientPosition = { x: event.clientX, y: event.clientY };
@@ -152,7 +172,7 @@ export default function InteractionEdge({
         const offset = { x: current.x - start.x, y: current.y - start.y };
         const nextPoints =
           startPoints.length === 0
-            ? [current]
+            ? translateSegment(segmentStart, segmentEnd, offset)
             : moveSegment(startPoints, segmentIndex, offset);
         data?.onPointsChange?.(id, nextPoints);
       };
@@ -183,7 +203,7 @@ export default function InteractionEdge({
     };
 
   const onWaypointDoubleClick =
-    (pointIndex: number) => (event: ReactMouseEvent<SVGCircleElement>) => {
+    (pointIndex: number) => (event: ReactMouseEvent<HTMLDivElement>) => {
       event.preventDefault();
       event.stopPropagation();
       data?.onPointsChange?.(
@@ -195,34 +215,54 @@ export default function InteractionEdge({
 
   return (
     <>
-      <BaseEdge id={id} path={edgePath} style={style} />
+      <BaseEdge
+        id={id}
+        path={edgePath}
+        style={style}
+        interactionWidth={editing ? 20 : 12}
+      />
       <circle className="edge-terminal" cx={originX} cy={originY} r={6} />
-      {pathPoints.slice(1).map((point, index) => {
-        const start = pathPoints[index];
-        if (!start) return null;
-        return (
-          <path
-            key={`${id}-segment-${index}`}
-            className="edge-segment-hit"
-            d={getEdgePath([start, point])}
-            onClick={onSegmentClick(index)}
-            onPointerDown={onSegmentPointerDown(index)}
-          />
-        );
-      })}
-      {points.map((point, index) => (
-        <circle
-          key={`${id}-waypoint-${index}`}
-          className="edge-waypoint"
-          cx={point.x}
-          cy={point.y}
-          r={7}
-          onClick={(event) => event.stopPropagation()}
-          onDoubleClick={onWaypointDoubleClick(index)}
-          onPointerDown={onWaypointPointerDown(index)}
-        />
-      ))}
-      {label ? (
+      {editing
+        ? pathPoints.slice(1).map((point, index) => {
+            const start = pathPoints[index];
+            if (!start) return null;
+            return (
+              <path
+                key={`${id}-segment-${index}`}
+                className="edge-segment-hit"
+                d={getEdgePath([start, point])}
+                onClick={onSegmentClick(index)}
+                onPointerDown={onSegmentPointerDown(index)}
+              />
+            );
+          })
+        : null}
+      {editing ? (
+        <EdgeLabelRenderer>
+          {points.map((point, index) => (
+            <div
+              key={`${id}-waypoint-${index}`}
+              className="edge-waypoint"
+              style={{
+                transform: `translate(-50%, -50%) translate(${point.x}px, ${point.y}px)`,
+              }}
+              onClick={(event) => event.stopPropagation()}
+              onDoubleClick={onWaypointDoubleClick(index)}
+              onPointerDown={onWaypointPointerDown(index)}
+            />
+          ))}
+          {label ? (
+            <div
+              className="edge-label"
+              style={{
+                transform: `translate(-50%, -50%) translate(${labelPoint.x}px,${labelPoint.y + 18}px)`,
+              }}
+            >
+              {String(label)}
+            </div>
+          ) : null}
+        </EdgeLabelRenderer>
+      ) : label ? (
         <EdgeLabelRenderer>
           <div
             className="edge-label"

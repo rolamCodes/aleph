@@ -27,7 +27,7 @@ import type {
 
 const nodeTypes = { context: ContextNode } satisfies NodeTypes;
 const edgeTypes = { interaction: InteractionEdge } satisfies EdgeTypes;
-const defaultEdgeOptions = { type: "interaction" } as const;
+const defaultEdgeOptions = { type: "interaction", selectable: true } as const;
 
 function isValidInteraction(
   connection: Connection | InteractionEdgeType,

@@ -199,14 +199,24 @@ body {
 }
 
 .edge-waypoint {
-  fill: #020303;
-  stroke: #ffffff;
-  stroke-width: 2;
+  background: #020303;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-sizing: border-box;
   cursor: grab;
+  height: 14px;
+  pointer-events: all;
+  position: absolute;
+  width: 14px;
 }
 
 .edge-waypoint:active {
   cursor: grabbing;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: #ffffff;
+  stroke-width: 2.5;
 }
 
 .edge-label {
