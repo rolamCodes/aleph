@@ -190,14 +190,22 @@ body {
   fill: #ffffff;
 }
 
-.edge-stretch-grip {
+.edge-segment-hit {
+  cursor: move;
+  fill: none;
+  pointer-events: stroke;
+  stroke: transparent;
+  stroke-width: 20;
+}
+
+.edge-waypoint {
   fill: #020303;
   stroke: #ffffff;
   stroke-width: 2;
   cursor: grab;
 }
 
-.edge-stretch-grip:active {
+.edge-waypoint:active {
   cursor: grabbing;
 }
 

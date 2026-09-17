@@ -50,16 +50,18 @@ export type ContextData = {
 
 export type ContextNode = Node<ContextData, "context">;
 
-export type EdgeBend = {
+export type EdgeWaypoint = {
   x: number;
   y: number;
 };
 
 export type InteractionEdgeData = {
   interaction: InteractionType;
-  bend?: EdgeBend;
-  onBendChange?: (edgeId: string, bend: EdgeBend) => void;
-  onBendChangeEnd?: () => void;
+  points?: EdgeWaypoint[];
+  // Kept so existing saved edges are upgraded on their next save.
+  bend?: EdgeWaypoint;
+  onPointsChange?: (edgeId: string, points: EdgeWaypoint[]) => void;
+  onPointsChangeEnd?: () => void;
 };
 
 export type InteractionEdge = Edge<InteractionEdgeData>;

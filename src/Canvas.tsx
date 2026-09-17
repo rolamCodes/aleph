@@ -20,7 +20,7 @@ import Companion from "./Companion";
 import { usePushToTalk } from "./voice/usePushToTalk";
 import type {
   ContextNode as ContextNodeType,
-  EdgeBend,
+  EdgeWaypoint,
   InteractionEdge as InteractionEdgeType,
   PointedTarget,
 } from "./types";
@@ -71,14 +71,7 @@ function serializeEdges(edges: InteractionEdgeType[]) {
     label: edge.data?.interaction ?? String(edge.label ?? "click"),
     data: {
       interaction: edge.data?.interaction ?? String(edge.label ?? "click"),
-      ...(edge.data?.bend
-        ? {
-            bend: {
-              x: edge.data.bend.x,
-              y: edge.data.bend.y,
-            },
-          }
-        : {}),
+      points: edge.data?.points ?? (edge.data?.bend ? [edge.data.bend] : []),
     },
   }));
 }
@@ -148,11 +141,19 @@ export default function Canvas() {
     [project, replaceGraph],
   );
 
-  const onBendChange = useCallback(
-    (edgeId: string, bend: EdgeBend) => {
+  const onPointsChange = useCallback(
+    (edgeId: string, points: EdgeWaypoint[]) => {
       const nextEdges = edgesRef.current.map((edge) =>
         edge.id === edgeId
-          ? { ...edge, data: { ...edge.data, bend } }
+          ? {
+              ...edge,
+              data: {
+                ...edge.data,
+                interaction:
+                  edge.data?.interaction ?? String(edge.label ?? "click"),
+                points,
+              },
+            }
           : edge,
       );
       edgesRef.current = nextEdges;
@@ -161,32 +162,34 @@ export default function Canvas() {
     [setEdges],
   );
 
-  const onBendChangeEnd = useCallback(() => {
+  const onPointsChangeEnd = useCallback(() => {
     void persist(nodesRef.current, edgesRef.current);
   }, [persist]);
 
-  const withBendHandlers = useCallback(
+  const withEdgeHandlers = useCallback(
     (graphEdges: InteractionEdgeType[]) =>
       graphEdges.map((edge) => ({
         ...edge,
         data: {
           ...edge.data,
-          onBendChange,
-          onBendChangeEnd,
+          interaction:
+            edge.data?.interaction ?? String(edge.label ?? "click"),
+          onPointsChange,
+          onPointsChangeEnd,
         },
       })),
-    [onBendChange, onBendChangeEnd],
+    [onPointsChange, onPointsChangeEnd],
   );
 
   useEffect(() => {
     if (!project || syncedAtRef.current === project.updatedAt) return;
     syncedAtRef.current = project.updatedAt;
-    const nextEdges = withBendHandlers(project.edges);
+    const nextEdges = withEdgeHandlers(project.edges);
     nodesRef.current = project.nodes;
     edgesRef.current = nextEdges;
     setNodes(project.nodes);
     setEdges(nextEdges);
-  }, [project, setEdges, setNodes, withBendHandlers]);
+  }, [project, setEdges, setNodes, withEdgeHandlers]);
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -198,8 +201,8 @@ export default function Canvas() {
           label: "click",
           data: {
             interaction: "click",
-            onBendChange,
-            onBendChangeEnd,
+            onPointsChange,
+            onPointsChangeEnd,
           },
         },
         edgesRef.current,
@@ -208,7 +211,7 @@ export default function Canvas() {
       setEdges(nextEdges);
       void persist(nodesRef.current, nextEdges);
     },
-    [onBendChange, onBendChangeEnd, persist, setEdges],
+    [onPointsChange, onPointsChangeEnd, persist, setEdges],
   );
 
   const onRecording = useCallback(
@@ -337,6 +340,7 @@ export default function Canvas() {
         }}
         onConnect={onConnect}
         isValidConnection={isValidInteraction}
+        edgesReconnectable={false}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}

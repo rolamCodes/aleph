@@ -62,6 +62,16 @@ export const interactionEdgeValidator = v.object({
   label: v.string(),
   data: v.object({
     interaction: v.string(),
+    points: v.optional(
+      v.array(
+        v.object({
+          x: v.number(),
+          y: v.number(),
+        }),
+      ),
+    ),
+    // Legacy saved edge shape. The client rewrites this as `points` next time
+    // it persists the graph.
     bend: v.optional(
       v.object({
         x: v.number(),
