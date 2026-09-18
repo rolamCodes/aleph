@@ -74,6 +74,10 @@ body {
   cursor: none;
 }
 
+.canvas--menu-open {
+  cursor: auto;
+}
+
 .companion {
   pointer-events: none;
 }
@@ -89,17 +93,90 @@ body {
 }
 
 .companion-well {
+  align-items: flex-start;
   background: #1a1a1a;
   border-radius: 10px;
+  cursor: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   height: fit-content;
   overflow: visible;
   padding: 4px;
+  pointer-events: auto;
   transition:
     left 220ms cubic-bezier(0.22, 1.15, 0.36, 1),
     top 220ms cubic-bezier(0.22, 1.15, 0.36, 1),
     border-radius 180ms ease;
   width: fit-content;
   z-index: 9999;
+}
+
+.companion-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 2px;
+  width: 148px;
+}
+
+.companion-menu__row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.companion-menu__button {
+  align-items: center;
+  background: #2a2a2a;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  color: #ffffff;
+  cursor: pointer;
+  display: flex;
+  flex: 1;
+  font: inherit;
+  font-size: 13px;
+  gap: 8px;
+  justify-content: flex-start;
+  padding: 5px 8px;
+}
+
+.companion-menu__button:hover {
+  background: #353535;
+}
+
+.companion-menu__button--primary {
+  background: #3b9eff;
+  border-color: #3b9eff;
+}
+
+.companion-menu__button--primary:hover {
+  background: #2f8ae0;
+}
+
+.companion-menu__button--danger:hover {
+  background: #5a1d1d;
+  border-color: #ff5f57;
+}
+
+.companion-menu__rename {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.companion-menu__input {
+  background: #0a0a0a;
+  border: 1px solid #3b9eff;
+  border-radius: 6px;
+  color: #ffffff;
+  cursor: text;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  padding: 5px 8px;
+  width: 100%;
 }
 
 .companion-orb {

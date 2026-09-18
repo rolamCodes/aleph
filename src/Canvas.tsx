@@ -21,6 +21,7 @@ import { inferPointedTargetFromGraphChange } from "./inferPointedTarget";
 import Companion from "./Companion";
 import { usePushToTalk } from "./voice/usePushToTalk";
 import type {
+  ContextItem,
   ContextNode as ContextNodeType,
   InteractionEdge as InteractionEdgeType,
   PointedTarget,
@@ -88,6 +89,42 @@ function parseStorageId(value: unknown): Id<"_storage"> {
   return value.storageId as Id<"_storage">;
 }
 
+function labelForTarget(
+  nodes: ContextNodeType[],
+  edges: InteractionEdgeType[],
+  target: PointedTarget,
+): string {
+  if (target.kind === "context") {
+    return (
+      nodes.find((node) => node.id === target.id)?.data.name ?? "Context"
+    );
+  }
+  if (target.kind === "component") {
+    const node = nodes.find((candidate) => candidate.id === target.contextId);
+    const item = node?.data.items.find((candidate) => candidate.id === target.id);
+    return item?.type === "component" ? item.name : "Component";
+  }
+  if (target.kind === "element") {
+    const node = nodes.find((candidate) => candidate.id === target.contextId);
+    if (!node) return "Element";
+    for (const item of node.data.items) {
+      if (item.type === "element" && item.id === target.id) return item.label;
+      if (item.type === "component") {
+        const element = item.elements.find(
+          (candidate) => candidate.id === target.id,
+        );
+        if (element) return element.label;
+      }
+    }
+    return "Element";
+  }
+  if (target.kind === "edge") {
+    const edge = edges.find((candidate) => candidate.id === target.id);
+    return edge?.data?.interaction ?? String(edge?.label ?? "Edge");
+  }
+  return "";
+}
+
 export default function Canvas() {
   const project = useQuery(api.projects.current);
   const replaceGraph = useMutation(api.projects.replaceGraph);
@@ -100,6 +137,7 @@ export default function Canvas() {
   const [pointedTarget, setPointedTarget] = useState<PointedTarget>({
     kind: "canvas",
   });
+  const [menuOpen, setMenuOpen] = useState(false);
   const [processingTarget, setProcessingTarget] = useState<PointedTarget>({
     kind: "canvas",
   });
@@ -169,6 +207,148 @@ export default function Canvas() {
     [persist, setEdges],
   );
 
+  const targetLabel = labelForTarget(nodes, edges, pointedTarget);
+
+  const handleRename = useCallback(
+    (name: string) => {
+      const target = pointedTarget;
+      if (target.kind === "canvas") return;
+      setMenuOpen(false);
+      if (target.kind === "edge") {
+        const nextEdges = edgesRef.current.map((edge) =>
+          edge.id === target.id
+            ? { ...edge, label: name, data: { interaction: name } }
+            : edge,
+        );
+        edgesRef.current = nextEdges;
+        setEdges(nextEdges);
+        void persist(nodesRef.current, nextEdges);
+        return;
+      }
+      const nextNodes = nodesRef.current.map((node) => {
+        if (target.kind === "context") {
+          return node.id === target.id
+            ? { ...node, data: { ...node.data, name } }
+            : node;
+        }
+        if (node.id !== target.contextId) return node;
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            items: node.data.items.map((item) => {
+              if (target.kind === "component") {
+                return item.type === "component" && item.id === target.id
+                  ? { ...item, name }
+                  : item;
+              }
+              if (item.type === "element" && item.id === target.id) {
+                return { ...item, label: name };
+              }
+              if (item.type === "component") {
+                return {
+                  ...item,
+                  elements: item.elements.map((element) =>
+                    element.id === target.id
+                      ? { ...element, label: name }
+                      : element,
+                  ),
+                };
+              }
+              return item;
+            }),
+          },
+        };
+      });
+      nodesRef.current = nextNodes;
+      setNodes(nextNodes);
+      void persist(nextNodes, edgesRef.current);
+    },
+    [persist, pointedTarget, setEdges, setNodes],
+  );
+
+  const handleDelete = useCallback(() => {
+    const target = pointedTarget;
+    if (target.kind === "canvas") return;
+    setMenuOpen(false);
+    if (target.kind === "edge") {
+      const nextEdges = edgesRef.current.filter(
+        (edge) => edge.id !== target.id,
+      );
+      edgesRef.current = nextEdges;
+      setEdges(nextEdges);
+      void persist(nodesRef.current, nextEdges);
+      setPointedTarget({ kind: "canvas" });
+      return;
+    }
+    if (target.kind === "context") {
+      const nextNodes = nodesRef.current.filter(
+        (node) => node.id !== target.id,
+      );
+      const nextEdges = edgesRef.current.filter(
+        (edge) => edge.source !== target.id && edge.target !== target.id,
+      );
+      nodesRef.current = nextNodes;
+      edgesRef.current = nextEdges;
+      setNodes(nextNodes);
+      setEdges(nextEdges);
+      void persist(nextNodes, nextEdges);
+      setPointedTarget({ kind: "canvas" });
+      return;
+    }
+    const context = nodesRef.current.find(
+      (node) => node.id === target.contextId,
+    );
+    if (!context) return;
+    let removedElementIds = new Set<string>([target.id]);
+    if (target.kind === "component") {
+      const component = context.data.items.find(
+        (item) => item.type === "component" && item.id === target.id,
+      );
+      if (component?.type === "component") {
+        removedElementIds = new Set(
+          component.elements.map((element) => element.id),
+        );
+      }
+    }
+    const nextNodes = nodesRef.current.map((node) => {
+      if (node.id !== target.contextId) return node;
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          items: node.data.items
+            .map((item) => {
+              if (item.type === "component") {
+                if (item.id === target.id) return null;
+                const elements = item.elements.filter(
+                  (element) => element.id !== target.id,
+                );
+                return elements.length === item.elements.length
+                  ? item
+                  : { ...item, elements };
+              }
+              return item.id === target.id ? null : item;
+            })
+            .filter((item): item is ContextItem => item !== null),
+        },
+      };
+    });
+    const nextEdges = edgesRef.current.filter(
+      (edge) =>
+        !(
+          edge.source === target.contextId &&
+          removedElementIds.has(edge.sourceHandle?.replace(/^exit:/, "") ?? "")
+        ),
+    );
+    nodesRef.current = nextNodes;
+    edgesRef.current = nextEdges;
+    setNodes(nextNodes);
+    setEdges(nextEdges);
+    void persist(nextNodes, nextEdges);
+    setPointedTarget({ kind: "canvas" });
+  }, [persist, pointedTarget, setEdges, setNodes]);
+
   const onRecording = useCallback(
     async (audio: Blob, target: PointedTarget): Promise<void> => {
       if (!project) throw new Error("Project is not ready");
@@ -221,6 +401,46 @@ export default function Canvas() {
   const voice = usePushToTalk({ pointedTarget, onRecording });
 
   useEffect(() => {
+    if (pointedTarget.kind === "canvas") {
+      setMenuOpen(false);
+    }
+  }, [pointedTarget]);
+
+  useEffect(() => {
+    const isEditableTarget = (target: EventTarget | null): boolean =>
+      target instanceof HTMLElement &&
+      (target.isContentEditable ||
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.tagName === "SELECT");
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (isEditableTarget(event.target)) {
+        return;
+      }
+      if (
+        event.key === "/" &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey
+      ) {
+        event.preventDefault();
+        if (voice.status === "processing") {
+          return;
+        }
+        setMenuOpen((open) =>
+          open ? false : pointedTarget.kind !== "canvas",
+        );
+      } else if (event.key === "Escape") {
+        setMenuOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [pointedTarget, voice.status]);
+
+  useEffect(() => {
     if (voice.status !== "processing") {
       setReticleUnlocked(false);
       return;
@@ -255,7 +475,7 @@ export default function Canvas() {
   }
 
   return (
-    <div className="canvas">
+    <div className={menuOpen ? "canvas canvas--menu-open" : "canvas"}>
       <ReactFlow
         proOptions={{ hideAttribution: true }}
         nodes={nodes}
@@ -272,33 +492,13 @@ export default function Canvas() {
           setNodes(nextNodes);
           void persist(nextNodes, edgesRef.current);
         }}
-        onNodesDelete={(deleted) => {
-          const deletedIds = new Set(deleted.map((node) => node.id));
-          const nextNodes = nodesRef.current.filter(
-            (node) => !deletedIds.has(node.id),
-          );
-          const nextEdges = edgesRef.current.filter(
-            (edge) =>
-              !deletedIds.has(edge.source) && !deletedIds.has(edge.target),
-          );
-          nodesRef.current = nextNodes;
-          edgesRef.current = nextEdges;
-          void persist(nextNodes, nextEdges);
-        }}
-        onEdgesDelete={(deleted) => {
-          const deletedIds = new Set(deleted.map((edge) => edge.id));
-          const nextEdges = edgesRef.current.filter(
-            (edge) => !deletedIds.has(edge.id),
-          );
-          edgesRef.current = nextEdges;
-          void persist(nodesRef.current, nextEdges);
-        }}
         onConnect={onConnect}
         isValidConnection={isValidInteraction}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
         connectionLineComponent={InteractionConnectionLine}
+        deleteKeyCode={null}
         onInit={(instance) => {
           instanceRef.current = instance;
         }}
@@ -315,9 +515,14 @@ export default function Canvas() {
         focusTarget={
           voice.status === "processing" ? processingTarget : undefined
         }
+        onDelete={handleDelete}
+        onRename={handleRename}
+        menuOpen={menuOpen}
         onTargetChange={setPointedTarget}
+        pointedTarget={pointedTarget}
         readOrbReact={voice.readOrbReact}
         status={voice.status}
+        targetLabel={targetLabel}
       />
       {saveError ? <div className="save-error">{saveError}</div> : null}
     </div>
