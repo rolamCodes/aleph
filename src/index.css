@@ -67,6 +67,67 @@ body {
   z-index: 10001;
 }
 
+.how-it-works {
+  align-items: center;
+  background: rgba(2, 3, 3, 0.72);
+  cursor: default;
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  position: fixed;
+  z-index: 10002;
+}
+
+.how-it-works-card {
+  background: #111111;
+  border: 1px solid #3a3a3a;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 420px;
+  padding: 20px;
+  width: calc(100% - 48px);
+}
+
+.how-it-works-card h2,
+.how-it-works-card p,
+.how-it-works-card ul {
+  margin: 0;
+}
+
+.how-it-works-card p,
+.how-it-works-card ul {
+  color: #d4d4d4;
+  line-height: 1.45;
+}
+
+.how-it-works-card ul {
+  padding-left: 1.2em;
+}
+
+.how-it-works-card li + li {
+  margin-top: 6px;
+}
+
+.how-it-works-opt-out {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  gap: 8px;
+}
+
+.how-it-works-card button {
+  align-self: flex-start;
+  background: #ffffff;
+  border: 0;
+  border-radius: 8px;
+  color: #020303;
+  cursor: pointer;
+  font: inherit;
+  padding: 8px 14px;
+}
+
 .canvas {
   height: 100%;
   position: relative;

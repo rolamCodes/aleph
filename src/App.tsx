@@ -8,6 +8,7 @@ import { SignInButton, UserButton } from "@clerk/react";
 import { useEffect, useState } from "react";
 import { api } from "../convex/_generated/api";
 import Canvas from "./Canvas.tsx";
+import HowItWorks from "./HowItWorks.tsx";
 
 function SignedInApp() {
   const bootstrap = useMutation(api.users.bootstrap);
@@ -41,6 +42,7 @@ function SignedInApp() {
       <div className="account-control">
         <UserButton />
       </div>
+      <HowItWorks />
       <Canvas />
     </main>
   );
