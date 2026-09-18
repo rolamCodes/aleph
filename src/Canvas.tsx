@@ -137,6 +137,7 @@ export default function Canvas() {
   const [pointedTarget, setPointedTarget] = useState<PointedTarget>({
     kind: "canvas",
   });
+  const [menuOpen, setMenuOpen] = useState(false);
   const [processingTarget, setProcessingTarget] = useState<PointedTarget>({
     kind: "canvas",
   });
@@ -212,6 +213,7 @@ export default function Canvas() {
     (name: string) => {
       const target = pointedTarget;
       if (target.kind === "canvas") return;
+      setMenuOpen(false);
       if (target.kind === "edge") {
         const nextEdges = edgesRef.current.map((edge) =>
           edge.id === target.id
@@ -268,6 +270,7 @@ export default function Canvas() {
   const handleDelete = useCallback(() => {
     const target = pointedTarget;
     if (target.kind === "canvas") return;
+    setMenuOpen(false);
     if (target.kind === "edge") {
       const nextEdges = edgesRef.current.filter(
         (edge) => edge.id !== target.id,
@@ -398,6 +401,46 @@ export default function Canvas() {
   const voice = usePushToTalk({ pointedTarget, onRecording });
 
   useEffect(() => {
+    if (pointedTarget.kind === "canvas") {
+      setMenuOpen(false);
+    }
+  }, [pointedTarget]);
+
+  useEffect(() => {
+    const isEditableTarget = (target: EventTarget | null): boolean =>
+      target instanceof HTMLElement &&
+      (target.isContentEditable ||
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.tagName === "SELECT");
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (isEditableTarget(event.target)) {
+        return;
+      }
+      if (
+        event.key === "/" &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey
+      ) {
+        event.preventDefault();
+        if (voice.status === "processing") {
+          return;
+        }
+        setMenuOpen((open) =>
+          open ? false : pointedTarget.kind !== "canvas",
+        );
+      } else if (event.key === "Escape") {
+        setMenuOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [pointedTarget, voice.status]);
+
+  useEffect(() => {
     if (voice.status !== "processing") {
       setReticleUnlocked(false);
       return;
@@ -432,7 +475,7 @@ export default function Canvas() {
   }
 
   return (
-    <div className="canvas">
+    <div className={menuOpen ? "canvas canvas--menu-open" : "canvas"}>
       <ReactFlow
         proOptions={{ hideAttribution: true }}
         nodes={nodes}
@@ -474,6 +517,7 @@ export default function Canvas() {
         }
         onDelete={handleDelete}
         onRename={handleRename}
+        menuOpen={menuOpen}
         onTargetChange={setPointedTarget}
         pointedTarget={pointedTarget}
         readOrbReact={voice.readOrbReact}

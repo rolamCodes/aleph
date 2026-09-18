@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Pencil, Trash2 } from "lucide-react";
 import type { PointedTarget, VoiceStatus } from "./types";
 import {
   LISTENING_HUE,
@@ -182,6 +183,7 @@ function blendEnvelope(current: number, target: number): number {
 export default function Companion({
   focusTarget,
   frozen = false,
+  menuOpen = false,
   onDelete,
   onRename,
   onTargetChange,
@@ -192,6 +194,7 @@ export default function Companion({
 }: {
   focusTarget?: PointedTarget;
   frozen?: boolean;
+  menuOpen?: boolean;
   onDelete: () => void;
   onRename: (name: string) => void;
   onTargetChange: (target: PointedTarget) => void;
@@ -218,7 +221,10 @@ export default function Companion({
   const [draft, setDraft] = useState("");
   const activeKey = targetKey(pointedTarget);
   const menuVisible =
-    pointedTarget.kind !== "canvas" && !frozen && status !== "processing";
+    menuOpen &&
+    pointedTarget.kind !== "canvas" &&
+    !frozen &&
+    status !== "processing";
 
   useEffect(() => {
     setEditing(false);
@@ -279,6 +285,19 @@ export default function Companion({
     };
 
     const update = () => {
+      // Lock the reticle onto the menu's target while the menu is open so
+      // the pointer is free to move over and click the menu.
+      if (menuOpen) {
+        const locked =
+          pointedTarget.kind === "canvas"
+            ? null
+            : elementForTarget(pointedTarget);
+        if (locked) {
+          setVisible(true);
+          applySnap(boxFromElement(locked));
+        }
+        return;
+      }
       // Pin the well while the pointer works the actions menu so it
       // doesn't chase the cursor and becomes unclickable.
       if (hoveringWellRef.current) {
@@ -386,7 +405,7 @@ export default function Companion({
       well.removeEventListener("pointerleave", onWellLeave);
       cancelAnimationFrame(raf);
     };
-  }, [focusTarget, frozen, onTargetChange, status]);
+  }, [focusTarget, frozen, menuOpen, onTargetChange, pointedTarget, status]);
 
   useEffect(() => {
     const orb = orbRef.current;
@@ -534,25 +553,24 @@ export default function Companion({
                 </div>
               </form>
             ) : (
-              <>
-                <div className="companion-menu__label">{targetLabel}</div>
-                <div className="companion-menu__row">
-                  <button
-                    className="companion-menu__button"
-                    onClick={startEditing}
-                    type="button"
-                  >
-                    Rename
-                  </button>
-                  <button
-                    className="companion-menu__button companion-menu__button--danger"
-                    onClick={onDelete}
-                    type="button"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </>
+              <div className="companion-menu__row">
+                <button
+                  className="companion-menu__button"
+                  onClick={startEditing}
+                  type="button"
+                >
+                  <Pencil size={14} aria-hidden="true" />
+                  Rename
+                </button>
+                <button
+                  className="companion-menu__button companion-menu__button--danger"
+                  onClick={onDelete}
+                  type="button"
+                >
+                  <Trash2 size={14} aria-hidden="true" />
+                  Delete
+                </button>
+              </div>
             )}
           </div>
         ) : null}
