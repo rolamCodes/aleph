@@ -91,13 +91,23 @@ body {
 }
 
 .how-it-works-card h2,
-.how-it-works-card p {
+.how-it-works-card p,
+.how-it-works-card ul {
   margin: 0;
 }
 
-.how-it-works-card p {
+.how-it-works-card p,
+.how-it-works-card ul {
   color: #d4d4d4;
   line-height: 1.45;
+}
+
+.how-it-works-card ul {
+  padding-left: 1.2em;
+}
+
+.how-it-works-card li + li {
+  margin-top: 6px;
 }
 
 .how-it-works-opt-out {

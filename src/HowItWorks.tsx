@@ -39,13 +39,14 @@ export default function HowItWorks() {
       <div className="how-it-works-card">
         <h2 id="how-it-works-title">How it works</h2>
         <p>
-          Point at the canvas, a screen, or a connection. Hold Space and speak
-          to add or change what you are pointing at.
+          Point at the canvas, a screen, a component, or a connection. Then:
         </p>
-        <p>
-          Drag screens to move them. Connect an element to another screen to
-          describe an interaction.
-        </p>
+        <ul>
+          <li>Hold Space and speak to add or change what you are pointing at</li>
+          <li>Press / to rename or delete the pointed item</li>
+          <li>Drag screens to move them</li>
+          <li>Connect an element to another screen to describe an interaction</li>
+        </ul>
         <label className="how-it-works-opt-out">
           <input
             type="checkbox"
