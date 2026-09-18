@@ -278,6 +278,8 @@ export function usePushToTalk({
         event.metaKey ||
         event.shiftKey ||
         isEditableTarget(event.target) ||
+        (event.target instanceof Element &&
+          event.target.closest("[role='dialog']")) ||
         (statusRef.current !== "idle" && statusRef.current !== "error")
       ) {
         return;
