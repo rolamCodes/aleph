@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PointedTarget, VoiceStatus } from "./types";
 import {
   LISTENING_HUE,
@@ -182,21 +182,30 @@ function blendEnvelope(current: number, target: number): number {
 export default function Companion({
   focusTarget,
   frozen = false,
+  onDelete,
+  onRename,
   onTargetChange,
+  pointedTarget,
   readOrbReact,
   status,
+  targetLabel,
 }: {
   focusTarget?: PointedTarget;
   frozen?: boolean;
+  onDelete: () => void;
+  onRename: (name: string) => void;
   onTargetChange: (target: PointedTarget) => void;
+  pointedTarget: PointedTarget;
   readOrbReact: () => OrbReact | null;
   status: VoiceStatus;
+  targetLabel: string;
 }) {
   const reticleRef = useRef<HTMLDivElement>(null);
   const wellRef = useRef<HTMLDivElement>(null);
   const orbRef = useRef<HTMLDivElement>(null);
   const attachedRef = useRef<Element | null>(null);
   const pointerRef = useRef({ x: 0, y: 0, inside: false });
+  const hoveringWellRef = useRef(false);
   const frozenPositionRef = useRef<{ x: number; y: number } | null>(null);
   const lastEnvelopeRef = useRef(RESTING_ENVELOPE);
   const lastHueRef = useRef(LISTENING_HUE);
@@ -204,6 +213,17 @@ export default function Companion({
   const readOrbReactRef = useRef(readOrbReact);
   const targetKeyRef = useRef("canvas");
   readOrbReactRef.current = readOrbReact;
+
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const activeKey = targetKey(pointedTarget);
+  const menuVisible =
+    pointedTarget.kind !== "canvas" && !frozen && status !== "processing";
+
+  useEffect(() => {
+    setEditing(false);
+    setDraft("");
+  }, [activeKey]);
 
   useEffect(() => {
     const reticle = reticleRef.current;
@@ -259,6 +279,12 @@ export default function Companion({
     };
 
     const update = () => {
+      // Pin the well while the pointer works the actions menu so it
+      // doesn't chase the cursor and becomes unclickable.
+      if (hoveringWellRef.current) {
+        setVisible(true);
+        return;
+      }
       const { x, y, inside } = pointerRef.current;
       if (status === "processing" && frozen) {
         if (!frozenPositionRef.current) {
@@ -330,6 +356,14 @@ export default function Companion({
       update();
     };
 
+    const onWellEnter = () => {
+      hoveringWellRef.current = true;
+    };
+
+    const onWellLeave = () => {
+      hoveringWellRef.current = false;
+    };
+
     let raf = 0;
     const loop = () => {
       if (status === "processing" || frozen || pointerRef.current.inside) {
@@ -340,12 +374,16 @@ export default function Companion({
 
     window.addEventListener("pointermove", onMove);
     document.documentElement.addEventListener("pointerleave", onLeave);
+    well.addEventListener("pointerenter", onWellEnter);
+    well.addEventListener("pointerleave", onWellLeave);
     update();
     raf = requestAnimationFrame(loop);
 
     return () => {
       window.removeEventListener("pointermove", onMove);
       document.documentElement.removeEventListener("pointerleave", onLeave);
+      well.removeEventListener("pointerenter", onWellEnter);
+      well.removeEventListener("pointerleave", onWellLeave);
       cancelAnimationFrame(raf);
     };
   }, [focusTarget, frozen, onTargetChange, status]);
@@ -436,12 +474,90 @@ export default function Companion({
     };
   }, [status]);
 
+  const startEditing = () => {
+    setDraft(targetLabel);
+    setEditing(true);
+  };
+
+  const commitRename = () => {
+    const name = draft.trim();
+    if (!name) {
+      return;
+    }
+    onRename(name);
+    setEditing(false);
+  };
+
   return (
-    <div className="companion" aria-hidden="true">
+    <div className="companion">
       <div ref={wellRef} className="companion-well">
-        <div ref={orbRef} className="companion-orb" />
+        <div ref={orbRef} className="companion-orb" aria-hidden="true" />
+        {menuVisible ? (
+          <div className="companion-menu">
+            {editing ? (
+              <form
+                className="companion-menu__rename"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  commitRename();
+                }}
+              >
+                <input
+                  autoFocus
+                  className="companion-menu__input"
+                  maxLength={80}
+                  onChange={(event) => setDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      setEditing(false);
+                    }
+                    event.stopPropagation();
+                  }}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  placeholder="Name"
+                  value={draft}
+                />
+                <div className="companion-menu__row">
+                  <button
+                    className="companion-menu__button companion-menu__button--primary"
+                    type="submit"
+                  >
+                    Save
+                  </button>
+                  <button
+                    className="companion-menu__button"
+                    onClick={() => setEditing(false)}
+                    type="button"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <div className="companion-menu__label">{targetLabel}</div>
+                <div className="companion-menu__row">
+                  <button
+                    className="companion-menu__button"
+                    onClick={startEditing}
+                    type="button"
+                  >
+                    Rename
+                  </button>
+                  <button
+                    className="companion-menu__button companion-menu__button--danger"
+                    onClick={onDelete}
+                    type="button"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        ) : null}
       </div>
-      <div ref={reticleRef} className="reticle" />
+      <div ref={reticleRef} className="reticle" aria-hidden="true" />
     </div>
   );
 }
